@@ -67,8 +67,5 @@ void sbfree(sb* str)
             free(str->data);
         }
         free(str);
-        str->data = NULL; // Avoid dangling pointer
-        str->size = 0;
-        str->capacity = 0; // Reset capacity
     }
 }

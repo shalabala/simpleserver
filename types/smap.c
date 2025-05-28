@@ -61,7 +61,7 @@ static int snode_init(snode *node,
   return 0;
 }
 
-static int snode_vupdate(snode *node, char *value, size_t vallen) {
+static int snode_vupdate(snode *node, const char *value, size_t vallen) {
   if (node->vallen != vallen + 1) {
     node->value = realloc(node->value, vallen + 1);
     if (!node->value) {
@@ -100,7 +100,7 @@ smap *smap_init(size_t num_buckets) {
 /**
  * Returns true if both keys are equal
  */
-bool keyeq(char *key1, char *key2, size_t key1len, size_t key2len) {
+bool keyeq(const char *key1, const char *key2, size_t key1len, size_t key2len) {
   if (key1len != key2len) {
     return false;
   }
