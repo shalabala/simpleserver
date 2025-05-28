@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "sb.h": "c",
+        "request.h": "c",
+        "random": "c"
+    }
+}
