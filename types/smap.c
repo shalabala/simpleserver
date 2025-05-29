@@ -70,11 +70,31 @@ static int snode_vupdate(snode *node, const char *value, size_t vallen) {
   }
 
   strncpy(node->value, value, vallen);
+  node->vallen = vallen;
   node->value[vallen] = 0;
   return 0;
 }
 
-smap *smap_init(size_t num_buckets) {
+int smap_init(smap *map, size_t num_buckets) {
+  if (!map || num_buckets == 0) {
+    return RAISE_ARGERR(
+        "Cannot initialize the smap with the provided arguments");
+  }
+  map->size = 0;
+  map->bucketsnum = calc_capacity(num_buckets);
+  map->mask = map->bucketsnum - 1; // Mask for bucket index calculation
+
+  map->buckets = calloc(map->bucketsnum, sizeof(snode));
+  if (!map->buckets) {
+    free(map); // Free the map if bucket allocation fails
+    return RAISE_MALLOC(
+        "could not allocate memory for smap nodes"); // Memory allocation failed
+  }
+
+  return 0;
+}
+
+smap *smap_create(size_t num_buckets) {
   if (num_buckets == 0) {
     return NULL; // Invalid number of buckets
   }
@@ -83,33 +103,15 @@ smap *smap_init(size_t num_buckets) {
   if (!map) {
     return NULL; // Memory allocation failed
   }
-
-  map->size = 0;
-  map->bucketsnum = calc_capacity(num_buckets);
-  map->mask = map->bucketsnum - 1; // Mask for bucket index calculation
-
-  map->buckets = calloc(num_buckets, sizeof(snode));
-  if (!map->buckets) {
-    free(map);   // Free the map if bucket allocation fails
+  if (smap_init(map, num_buckets) != 0) {
+    free(map);   // Free the map if initialization fails
     return NULL; // Memory allocation failed
   }
 
-  return map;
+  return map; // Return the initialized map
 }
 
-/**
- * Returns true if both keys are equal
- */
-bool keyeq(const char *key1, const char *key2, size_t key1len, size_t key2len) {
-  if (key1len != key2len) {
-    return false;
-  }
-
-  int cmp = strncmp(key1, key2, key1len);
-  return cmp == 0;
-}
-
-int smap_insert(smap *map,
+int smap_upsert(smap *map,
                 const char *key,
                 size_t keylen,
                 const char *value,
@@ -123,14 +125,16 @@ int smap_insert(smap *map,
 
   size_t bucketn = hash(key, keylen) & map->mask;
   snode *bucket = map->buckets + bucketn;
-  if (!bucket) {
-    snode_init(bucket, key, keylen, value, vallen, NULL);
-    return 0;
+  if (!bucket->key) {
+    int success = snode_init(bucket, key, keylen, value, vallen, NULL);
+    if (success == 0) {
+      ++(map->size);
+    }
+    return success; // If the bucket is empty, initialize it with the new node
   }
-
-  while (!bucket->next) {
+  while (bucket) {
     // UPDATE
-    if (keyeq(key, bucket->key, keylen, bucket->keylen)) {
+    if (strneq(key, keylen, bucket->key, bucket->keylen)) {
       return snode_vupdate(bucket, value, vallen);
     }
 
@@ -146,6 +150,45 @@ int smap_insert(smap *map,
   }
 
   memcpy(newnode, bucket, sizeof(snode));
-  snode_init(bucket, key, keylen, value, vallen, newnode);
-  return 0;
+  int success = snode_init(bucket, key, keylen, value, vallen, newnode);
+  if (success == 0) {
+    ++(map->size);
+  }
+  return success;
+}
+
+snode *smap_get(smap *map, const char *key, size_t keylen) {
+  size_t bucketn = hash(key, keylen) & map->mask;
+  snode *bucket = map->buckets + bucketn;
+  if(!bucket || !bucket->key) {
+    return NULL; // No bucket or no key in the bucket
+  }
+
+  while (bucket  && !strneq(key, keylen, bucket->key, bucket->keylen)) {
+    bucket = bucket->next;
+  }
+  return bucket;
+}
+
+void smap_free(smap *map) {
+  if (!map || !map->buckets) {
+    return; // Nothing to free
+  }
+
+  for (size_t i = 0; i < map->bucketsnum; ++i) {
+    snode *bucket = map->buckets + i;
+    free(bucket->key);
+    free(bucket->value);
+    // first bucket is part of map->buckets, ergo it does not have to be freed
+    // individually
+    bucket = bucket->next;
+    while (bucket) {
+      snode *next = bucket->next;
+      free(bucket->key);
+      free(bucket->value);
+      free(bucket);
+      bucket = next;
+    }
+  }
+  free(map->buckets);
 }

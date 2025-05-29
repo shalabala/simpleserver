@@ -19,6 +19,12 @@ release: simpleserver
 debug: CFLAGS += -g -O0 -Wall
 debug: simpleserver
 
+test: CFLAGS += -g -O0 -Wall
+
+ifeq ($(sanitize),true)
+CFLAGS += -fsanitize=address -fsanitize=undefined
+endif
+
 dirs:
 	@mkdir -p $(OBJ_DIRS)
 

@@ -2,6 +2,10 @@
     "files.associations": {
         "sb.h": "c",
         "request.h": "c",
-        "random": "c"
+        "random": "c",
+        "vector": "c",
+        "stdlib.h": "c",
+        "error.h": "c",
+        "smap.h": "c"
     }
 }
