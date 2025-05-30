@@ -6,6 +6,9 @@
         "vector": "c",
         "stdlib.h": "c",
         "error.h": "c",
-        "smap.h": "c"
+        "smap.h": "c",
+        "cmap.h": "c",
+        "functions.h": "c",
+        "const.h": "c"
     }
 }

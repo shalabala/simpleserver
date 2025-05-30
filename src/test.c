@@ -5,6 +5,10 @@
 
 #include "../types/sb.h"
 #include "../types/smap.h"
+#include "../types/cmap.h"
+#include "../com/request.h"
+#include "../com/response.h"
+#include "../com/coordination.h"
 #include "../utility/error.h"
 #include "../utility/functions.h"
 /**
@@ -20,6 +24,7 @@
  */
 #define check(expr) do_assert(expr, #expr)
 #define check_success(expr) check((expr) == 0)
+#define check_fail(expr) check((expr) != 0)
 #define check_notnull(expr) check((expr) != NULL)
 #define check_null(expr) check((expr) == NULL)
 
@@ -73,6 +78,8 @@ void test_sb() {
 
 void test_smap() {
   smap map;
+  snode *node;
+
   smap_init(&map, 63);
   check(map.bucketsnum == 64);
   check(map.mask == 63);
@@ -92,7 +99,6 @@ void test_smap() {
     // we havent inserted - should be null
     check_null(smap_get(&map, key, strlen(key)));
     check_success(smap_upsert(&map, key, strlen(key), value, strlen(value)));
-    snode *node;
     check_notnull(node = smap_get(&map, key, strlen(key)));
     check(strneq(key, strlen(key), node->key, node->keylen));
     check(strneq(value, strlen(value), node->value, node->vallen));
@@ -106,11 +112,46 @@ void test_smap() {
     check(strneq(value, strlen(value), node->value, node->vallen));
     check(map.size == i + 1);
   }
+  // test empty value
+  strncpy(key, "newkey", 16);
+  check_success(smap_upsert(&map, key, strlen(key), "", 0));
+  check_notnull(node = smap_get(&map, key, strlen(key)));
+  check(strneq(node->value, node->vallen, "", 0));
 
+  //test empty key
+  check_fail(smap_upsert(&map, "", 0, value, strlen(value) ));
   smap_free(&map);
+}
+
+int user_ctrl(request *req, smap *urlparams, response *resp){
+  snode *id = smap_get(urlparams, "id", 2);
+  check_notnull(id);
+  return atoi(id->value);
+}
+
+int user1_ctrl(request *req, smap *urlparams, response *resp){
+  return 42;
+}
+
+
+
+void test_cmap(){
+  cmap map;  
+  centry *ctrl;
+  smap urlargs;
+  check_success(smap_init(urlargs));
+  check_success(cmap_init(&map, 10));
+  check_success(cmap_reg(&map, "users/{id}", user_ctrl ));
+  check_notnull(ctrl = cmap_match(&map, "/users/123", 10));
+  check()
+
+
+
+
 }
 
 int main() {
   TEST(test_sb);
   TEST(test_smap);
+  TEST(test_cmap);
 }

@@ -10,13 +10,6 @@
 #include "../configuration/const.h"
 
 int main(int argc, char *argv[]) {
-  static char *welcomemsg = "HTTP/1.1 200 OK\r\n"
-                            "Content-Type: text/html; charset=UTF-8\r\n"
-                            "Content-Length: 64\r\n\r\n"
-                            //"{\"hello\":\"world\"}\r\n";
-                            "<html><head></head><body><h1>Hello, client!</h1><pre>"
-                            "Hello\r\nWorld</pre></body></html>\r\n";
-
   int outgoing_socket, incoming_socket;
   struct sockaddr_in server_address, client_address;
   socklen_t client_address_length = sizeof(client_address);
@@ -55,27 +48,9 @@ int main(int argc, char *argv[]) {
     incoming_socket = accept(outgoing_socket,
                              (struct sockaddr *)&client_address,
                              &client_address_length);
-    if (incoming_socket < 0) {
-      perror("Accept failed");
-      continue; // Continue to the next iteration
-    }
 
-    printf("Connection accepted from %s:%d\n",
-           inet_ntoa(client_address.sin_addr),
-           ntohs(client_address.sin_port));
-
-    send(incoming_socket,
-         welcomemsg,
-         strlen(welcomemsg),
-         0); // Send a welcome message
-    sb reqbuff;
-    sbinit(&reqbuff, 64);
-    reqrecieve(&reqbuff, incoming_socket, MAX_REQUEST_SIZE);
-    printf("REQ_RECIEVE buffer of size %lu:\n%s\n", reqbuff.size, reqbuff.data);
-    sbfree(&reqbuff);
-
-    printf("Client disconnected\n");
-
+    acceptreq(incoming_socket, &client_address);
+    
     close(incoming_socket);
   }
 

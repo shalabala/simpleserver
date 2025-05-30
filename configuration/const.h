@@ -3,5 +3,5 @@
 
 #define PORT 7890
 #define MAX_REQUEST_SIZE 1 << 20
-
+extern const char *welcomemsg;
 #endif

@@ -1,26 +1,56 @@
 #ifndef REQUEST_H
 #define REQUEST_H
-#include <netinet/in.h>
 
 #include "../types/sb.h"
 #include "../types/smap.h"
-typedef struct _request {
-  char *resource;
-  smap header;
-  smap query;
-  smap body;
-} request;
 
 /**
- * Receives a request from a socket and returns it as a string buffer.
- * @param str The string buffer to store the received request.
- * @param socket The socket from which to receive the request.
- * @param max_size The maximum size of the request to receive.
+ * Represents the HTTP methods supported by the server.
  */
-int reqrecieve(sb *str, int socket, size_t max_size);
+typedef enum _method { GET } method;
 
-int acceptreq(int incoming_socket, struct sockaddr_in *client_address);
+/**
+ * Represents a parsed HTTP request.
+ */
+typedef struct _request {
+  /**
+   * The HTTP method of the request.
+   */
+  method method;
 
-int parse( request *req, sb *str);
+  /**
+   * The requested resource. like /users?name=JohnDoe. 
+   * Includes the query string as well.
+   */
+  sb resource;
 
+  /**
+   * The headers of the request.
+   */
+  smap header;
+
+  /**
+   * The query parameters of the request.
+   */
+  smap query;
+} request;
+
+
+/**
+ * Initializes and parses the request from the string buffer.
+ * @param req The request structure to fill with parsed data.
+ * @param str The string buffer containing the request data.
+ */
+int parse(request *req, sb *str);
+
+/**
+ * Frees the memory allocated for the request structure.
+ * @param req The request structure to free.
+ */
+void reqfree(request *req);
+
+/**
+ * Prints the request as a string.
+ */
+void reqprint(request *req);
 #endif // REQUEST_H

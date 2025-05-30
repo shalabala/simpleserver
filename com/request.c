@@ -1,66 +1,246 @@
-#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 
-#include "request.h"
 #include "../configuration/const.h"
 #include "../types/sb.h"
 #include "../utility/error.h"
+#include "../utility/functions.h"
+#include "request.h"
 
-int reqrecieve(sb *str, int socket, size_t max_size) {
-  int error;
-  if (!str) {
-    return RAISE_ARGERR("cannot receive into NULL buffer");
+static method getmethod(char *methodName, size_t len) {
+  if (strneq(methodName, len, "GET", 3)) {
+    return GET;
   }
 
-  char buffer[1024];
-  int flags = 0;
-  ssize_t bytes_received = 0;
-  while ((bytes_received = recv(socket, buffer, sizeof(buffer) - 1, flags)) >
-         0) {
-    if (bytes_received < 0) {
-      return RAISE_RECVFAIL("Failed to recieve");
-    }
-    buffer[bytes_received] = '\0'; // Null-terminate the received data
-    if (str->size + bytes_received >= max_size) {
-      if ((error = sbappend(
-               str, buffer, str->size + bytes_received - max_size)) != 0) {
-        return error;
-      }
-      return RAISE_BUFFLIMIT("buffer limit has been reached");
-    }
-    if ((error = sbappend(str, buffer, bytes_received)) != 0) {
-      return error; // Memory allocation failed
-    }
-    flags = MSG_DONTWAIT; // after receiving one message only receive if its
-                          // already sent
-  }
-  return OK; // Return the received request as a string buffer
+  return RAISE_UNSPMETH("Methods other than GET are not supported");
 }
 
-int acceptreq(int incoming_socket, struct sockaddr_in *client_address) {
-  if (incoming_socket < 0) {
-    perror("Accept failed");
-    return RAISE_RECVFAIL(
-        "Could not accept request"); // Continue to the next iteration
+static int reqinit(request *req) {
+  int error;
+
+  if (!req) {
+    return RAISE_ARGERR("cannot initialize null request");
   }
-  sb reqbuff;
 
-  printf("Connection accepted from %s:%d\n",
-         inet_ntoa(client_address->sin_addr),
-         ntohs(client_address->sin_port));
+  if ((error = sbinit(&req->resource, 16))) {
+    return error;
+  }
 
-  // send(incoming_socket,
-  //      welcomemsg,
-  //      strlen(welcomemsg),
-  //      0); // Send a welcome message
-  sb reqbuff;
-  sbinit(&reqbuff, 64);
-  reqrecieve(&reqbuff, incoming_socket, MAX_REQUEST_SIZE);
-  printf("REQ_RECIEVE buffer of size %lu:\n%s\n", reqbuff.size, reqbuff.data);
-  
-  
+  if ((error = smap_init(&req->header, 64))) {
+    return error;
+  }
 
-  sbfree(&reqbuff);
+  if ((error = smap_init(&req->query, 64))) {
+    return error;
+  }
 
-  printf("Client disconnected\n");
+  return OK;
+}
+
+static int parse_method(request *req, sb *str, size_t *cursor) {
+  size_t i = 0;
+  // getting the method
+  while (i < str->size && str->data[i] != ' ') {
+    ++i;
+  }
+
+  method m = getmethod(str->data, i);
+  if (m < 0) {
+    return m; // serves as errorcode as well
+  }
+
+  req->method = m;
+  *cursor = i;
+  return OK;
+}
+
+static int parse_resource(request *req, sb *str, size_t *cursor) {
+  size_t i = *cursor;
+  int error;
+  // get the requested resource
+  size_t res_start = ++i;
+  while (i < str->size && str->data[i] != ' ') {
+    ++i;
+  }
+
+  if ((error =
+           sbappend(&req->resource, str->data + res_start, i - res_start))) {
+    return error;
+  }
+  *cursor = i;
+  return OK;
+}
+
+static void newline(sb *str, size_t *cursor) {
+  size_t i = *cursor;
+  while (i < str->size && str->data[i] != '\n') {
+    ++i;
+  }
+  *cursor = ++i;
+}
+
+static void flushws(sb *str, size_t *cursor) {
+  size_t i = *cursor;
+  while (i < str->size && (str->data[i] == ' ' || str->data[i] == '\t')) {
+    ++i;
+  }
+  *cursor = i;
+}
+
+static int parse_query(request *req) {
+  size_t i = 0;
+  int error;
+  while (i < req->resource.size && req->resource.data[i] != '?') {
+    ++i;
+  }
+
+  ++i;
+  if (i >= req->resource.size) {
+    return OK;
+  }
+
+  while (i < req->resource.size) {
+    size_t keystart = i;
+    while (i < req->resource.size && req->resource.data[i] != '=') {
+      ++i;
+    }
+    size_t keylen = i - keystart;
+    ++i;
+    if (i >= req->resource.size) {
+      if ((error = smap_upsert(
+               &req->query, req->resource.data + keystart, keylen, "", 0))) {
+        return error;
+      }
+      return OK;
+    }
+    size_t valstart = i;
+    while (i < req->resource.size && req->resource.data[i] != '&') {
+      ++i;
+    }
+    size_t vallen = i - valstart;
+    if ((error = smap_upsert(&req->query,
+                             req->resource.data + keystart,
+                             keylen,
+                             req->resource.data + valstart,
+                             vallen))) {
+      return error;
+    }
+    ++i;
+  }
+  return OK;
+}
+
+static int parse_header(request *req, sb *str, size_t *cursor) {
+  size_t i = *cursor;
+  int error;
+  while (i < str->size) {
+    size_t keystart = i;
+    while (i < str->size && str->data[i] != ':') {
+      if (str->data[i] == '\r' || str->data[i] == '\n') {
+        if (i == keystart) {
+          // empty line - reached end of header
+          newline(str, &i);
+          *cursor = i;
+          return OK;
+        } else {
+          // no colon -- malformed header
+          RAISE_MALFORMEDREQ("in header reached newline before reaching colon");
+        }
+      }
+      ++i;
+    }
+    size_t keylen = i - keystart;
+    ++i;
+    flushws(str, &i);
+    if (i >= str->size) {
+      if ((error = smap_upsert(
+               &req->header, str->data + keystart, keylen, "", 0))) {
+        return error;
+      }
+    }
+    size_t valstart = i;
+    while (i < str->size && str->data[i] != '\n' && str->data[i] != '\r') {
+      ++i;
+    }
+    size_t vallen = i - valstart;
+    if ((error = smap_upsert(&req->header,
+                             str->data + keystart,
+                             keylen,
+                             str->data + valstart,
+                             vallen))) {
+      return error;
+    }
+    newline(str, &i);
+  }
+  *cursor = i;
+  return OK;
+}
+
+int parse(request *req, sb *str) {
+  size_t i = 0;
+  int error;
+
+  if ((error = reqinit(req))) {
+    return error;
+  }
+
+  // getting the method
+  if ((error = parse_method(req, str, &i))) {
+    return error;
+  }
+
+  if ((error = parse_resource(req, str, &i))) {
+    return error;
+  }
+
+  if ((error = parse_query(req))) {
+    return error;
+  }
+
+  // we ignore http version here,
+  // this is just a stupid hobby project not a
+  // full-fledged webserver
+  newline(str, &i);
+
+  if ((error = parse_header(req, str, &i))) {
+    return error;
+  }
+
+  return OK;
+}
+
+void reqfree(request *req) {
+  if (req) {
+    smap_free(&req->header);
+    smap_free(&req->query);
+    sbfree(&req->resource);
+  }
+}
+
+static void print_method(method m) {
+  switch (m) {
+  case GET:
+    printf("GET");
+    break;
+
+  default:
+    printf("[WARNING UNKNOWN METHOD %d]", m);
+    break;
+  }
+}
+
+void reqprint(request *req) {
+  if (!req) {
+    printf("Request is NULL\n");
+    return;
+  }
+  printf("--------REQ---------\n");
+  printf("Resource: %s\nMethod: ", req->resource.data);
+  print_method(req->method);
+  printf("\nQuery: \n");
+  smap_print(&req->query);
+  printf("Header: \n");
+  smap_print(&req->header);
+  printf("--------------------\n");
 }

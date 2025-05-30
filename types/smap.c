@@ -116,8 +116,7 @@ int smap_upsert(smap *map,
                 size_t keylen,
                 const char *value,
                 size_t vallen) {
-  if (!map || !key || !value || keylen == 0 || vallen == 0 ||
-      map->mask >= map->bucketsnum) {
+  if (!map || !key || !value || keylen == 0 || map->mask >= map->bucketsnum) {
     return RAISE_ARGERR(
         "Cannot initialize the smap with the provided arguments"); // invalid
                                                                    // arguments
@@ -160,11 +159,11 @@ int smap_upsert(smap *map,
 snode *smap_get(smap *map, const char *key, size_t keylen) {
   size_t bucketn = hash(key, keylen) & map->mask;
   snode *bucket = map->buckets + bucketn;
-  if(!bucket || !bucket->key) {
+  if (!bucket || !bucket->key) {
     return NULL; // No bucket or no key in the bucket
   }
 
-  while (bucket  && !strneq(key, keylen, bucket->key, bucket->keylen)) {
+  while (bucket && !strneq(key, keylen, bucket->key, bucket->keylen)) {
     bucket = bucket->next;
   }
   return bucket;
@@ -191,4 +190,45 @@ void smap_free(smap *map) {
     }
   }
   free(map->buckets);
+}
+
+static inline void nodeprint(snode *node) {
+  printf("\"%s\":\"%s\"\n", node->key, node->value);
+}
+
+void smap_print(smap *map) {
+  for (size_t i = 0; i < map->bucketsnum; ++i) {
+    snode *bucket = map->buckets + i;
+    if (!bucket->key) {
+      continue;
+    }
+    while (bucket) {
+      nodeprint(bucket);
+      bucket = bucket->next;
+    }
+  }
+}
+
+int clear(smap *map) {
+  if (!map || !map->buckets) {
+    return RAISE_ARGERR("cannot clear null smap"); // Nothing to free
+  }
+
+  for (size_t i = 0; i < map->bucketsnum; ++i) {
+    snode *bucket = map->buckets + i;
+    free(bucket->key);
+    free(bucket->value);
+    // first bucket is part of map->buckets, ergo it does not have to be freed
+    // individually
+    bucket = bucket->next;
+    while (bucket) {
+      snode *next = bucket->next;
+      free(bucket->key);
+      free(bucket->value);
+      free(bucket);
+      bucket = next;
+    }
+  }
+  memset(map->buckets, 0, map->bucketsnum * sizeof(snode));
+  map->size = 0;
 }

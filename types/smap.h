@@ -2,6 +2,9 @@
 #define SMAP_H
 #include <string.h>
 
+/**
+ * String hash map node.
+ */
 typedef struct _snode {
   size_t keylen;       // Length of the key
   size_t vallen;       // Length of the value
@@ -10,8 +13,11 @@ typedef struct _snode {
   char *value;         // Value associated with the key
 } snode;
 
+/**
+ * Strin hash map structure.
+ */
 typedef struct _smap {
-  size_t size; // Number of elements in the map
+  size_t size;
   size_t bucketsnum;
   size_t mask;
   snode *buckets;
@@ -58,11 +64,24 @@ int smap_upsert(smap *map,
                 size_t keylen,
                 const char *value,
                 size_t vallen);
+
 /**
- * Frees the memory that was allocated for the fields of this smap. Does not free the smap itself.
+ * Prints the contents of the smap to the standard output.
+ */
+void smap_print(smap *map);
+
+/**
+ * Frees the memory that was allocated for the fields of this smap. Does not
+ * free the smap itself.
  * @param map Pointer to the smap to free.
  * @return void
  */
-void smap_free(smap* map);
+void smap_free(smap *map);
 
+/**
+ * Clears the  map, freeing all entries and resetting its state.
+ * @param map Pointer to the map to clear.
+ * @return 0 on success, or an error code on failure.
+ */
+int smap_clear(smap *map);
 #endif // SMAP_H
