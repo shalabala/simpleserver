@@ -3,7 +3,7 @@
 #include "../com/request.h"
 #include "../com/response.h"
 
-#define INDEX_MAX 27
+#define INDEX_MAX 37
 
 /**
  * Signature for a controller function.
@@ -68,5 +68,10 @@ centry* cmap_match(cmap *map, char *res, size_t reslen);
  * @param map Pointer to the controller map to free.
  */
 void cmap_free(cmap *map);
+
+/**
+ * Clears contents of the map. mainly used for testing.
+ */
+int cmap_clear(cmap *map);
 
 #endif // CMAP_H

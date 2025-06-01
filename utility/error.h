@@ -59,6 +59,8 @@ bool haserr();
  */
 error *geterr();
 
+void cleargloberr();
+
 #define RAISE_MALLOC(msg, ...) (raise(msg, &malloc_err, ##__VA_ARGS__))
 #define RAISE_ARGERR(msg, ...) (raise(msg, &arg_err, ##__VA_ARGS__))
 #define RAISE_RECVFAIL(msg, ...) (raise(msg, &receive_failed, ##__VA_ARGS__))

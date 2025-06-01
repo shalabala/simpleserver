@@ -118,7 +118,7 @@ int smap_upsert(smap *map,
                 size_t vallen) {
   if (!map || !key || !value || keylen == 0 || map->mask >= map->bucketsnum) {
     return RAISE_ARGERR(
-        "Cannot initialize the smap with the provided arguments"); // invalid
+        "Cannot upsert into the smap with the provided arguments"); // invalid
                                                                    // arguments
   }
 
@@ -209,7 +209,7 @@ void smap_print(smap *map) {
   }
 }
 
-int clear(smap *map) {
+int smap_clear(smap *map) {
   if (!map || !map->buckets) {
     return RAISE_ARGERR("cannot clear null smap"); // Nothing to free
   }
@@ -231,4 +231,5 @@ int clear(smap *map) {
   }
   memset(map->buckets, 0, map->bucketsnum * sizeof(snode));
   map->size = 0;
+  return OK;
 }

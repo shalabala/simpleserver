@@ -40,7 +40,9 @@ int reqrecieve(sb *str, int socket, size_t max_size) {
   return OK; // Return the received request as a string buffer
 }
 
-int acceptreq(int incoming_socket, struct sockaddr_in *client_address) {
+int acceptreq(int incoming_socket,
+              cmap *ctrls,
+              struct sockaddr_in *client_address) {
   if (incoming_socket < 0) {
     perror("Accept failed");
     return RAISE_RECVFAIL(
@@ -49,6 +51,13 @@ int acceptreq(int incoming_socket, struct sockaddr_in *client_address) {
 
   sb reqbuff;
   request req;
+  centry *matched_controller;
+  response response;
+  smap urlargs;
+
+  sbinit(&reqbuff, 64);
+  smap_init(&urlargs, 32);
+
   printf("Connection accepted from %s:%d\n",
          inet_ntoa(client_address->sin_addr),
          ntohs(client_address->sin_port));
@@ -58,16 +67,26 @@ int acceptreq(int incoming_socket, struct sockaddr_in *client_address) {
        strlen(welcomemsg),
        0); // Send a welcome message
 
-  sbinit(&reqbuff, 64);
+  
 
   reqrecieve(&reqbuff, incoming_socket, MAX_REQUEST_SIZE);
-  // printf("REQ_RECIEVE buffer of size %lu:\n%s\n", reqbuff.size,
-  // reqbuff.data);
   parse(&req, &reqbuff);
   reqprint(&req);
+
+  matched_controller = cmap_match(ctrls, req.resource.data, req.resource.size);
+  
+  parseurl(req.resource.data,
+           req.resource.size,
+           matched_controller->path,
+           matched_controller->pathlen, &urlargs);
+
+        
+  matched_controller->c(&req, &urlargs, &response); 
+  
   reqfree(&req);
   sbfree(&reqbuff);
-
+  smap_free(&urlargs);
+  
   printf("Client disconnected\n");
   return OK;
 }
@@ -80,7 +99,7 @@ int parseurl(
   while (req_i < reqlen && path_i < pathlen) {
     if (path[path_i] == '{') {
       keystart = ++path_i;
-      while (path_i < pathlen && path_i != '}') {
+      while (path_i < pathlen && path[path_i] != '}') {
         ++path_i;
       }
       if (path_i == pathlen) {
@@ -89,7 +108,7 @@ int parseurl(
       keylen = path_i - keystart;
 
       valstart = req_i;
-      while (req_i > reqlen && reqres[req_i] != '/') {
+      while (req_i < reqlen && reqres[req_i] != '/') {
         ++req_i;
       }
       vallen = req_i - valstart;

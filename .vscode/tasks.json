@@ -4,7 +4,12 @@
             "type": "cppbuild",
             "label": "Build with Make",
             "command": "make",
-            "args": ["clean", "debug", "test", "sanitize=true"],
+            "args": [
+                "clean",
+                "debug",
+                "test",
+              //     "sanitize=true"
+            ],
             "options": {
                 "cwd": "${workspaceFolder}"
             },

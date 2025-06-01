@@ -3,18 +3,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../types/sb.h"
-#include "../types/smap.h"
-#include "../types/cmap.h"
+#include "../com/coordination.h"
 #include "../com/request.h"
 #include "../com/response.h"
-#include "../com/coordination.h"
+#include "../types/cmap.h"
+#include "../types/sb.h"
+#include "../types/smap.h"
 #include "../utility/error.h"
 #include "../utility/functions.h"
 /**
  * Run the test.
  */
 #define TEST(func)                                                             \
+  cleargloberr();                                                              \
   printf("starting test: [%s]\n", #func);                                      \
   func();                                                                      \
   printf("finished successfully: [%s]\n", #func);
@@ -34,11 +35,11 @@ void do_assert(bool expr, char *repr) {
       error *err = geterr();
       fprintf(stderr,
               "[FAILED] Error has occured whilst evaluating expression [%s]: "
-              "%sn",
+              "%s\n",
               repr,
               err->description);
     } else {
-      fprintf(stderr, "[FAILED] Expression [%s] evaluated to false", repr);
+      fprintf(stderr, "[FAILED] Expression [%s] evaluated to false\n", repr);
     }
     abort();
   }
@@ -118,40 +119,217 @@ void test_smap() {
   check_notnull(node = smap_get(&map, key, strlen(key)));
   check(strneq(node->value, node->vallen, "", 0));
 
-  //test empty key
-  check_fail(smap_upsert(&map, "", 0, value, strlen(value) ));
+  // test empty key
+  check_fail(smap_upsert(&map, "", 0, value, strlen(value)));
   smap_free(&map);
 }
 
-int user_ctrl(request *req, smap *urlparams, response *resp){
+int user_ctrl(request *req, smap *urlparams, response *resp) {
   snode *id = smap_get(urlparams, "id", 2);
   check_notnull(id);
   return atoi(id->value);
 }
 
-int user1_ctrl(request *req, smap *urlparams, response *resp){
-  return 42;
+int user123_ctrl(request *req, smap *urlparams, response *resp) { return 42; }
+
+void create_dummy_request(request *req, char *resource) {
+  if (!req->resource.data) {
+    if (sbinit(&req->resource, 16)) {
+      fprintf(stderr, "Could not create dummy request");
+      abort();
+    }
+  } else {
+    sbclear(&req->resource);
+  }
+  if (sbappend(&req->resource, resource, strlen(resource))) {
+    fprintf(stderr, "Could not create dummy request");
+    abort();
+  }
 }
 
-
-
-void test_cmap(){
-  cmap map;  
+void test_cmap() {
+  cmap map = {0};
   centry *ctrl;
-  smap urlargs;
-  check_success(smap_init(urlargs));
+  smap urlargs = {0};
+  request dummyreq = {0};
+
+  check_success(smap_init(&urlargs, 64));
   check_success(cmap_init(&map, 10));
-  check_success(cmap_reg(&map, "users/{id}", user_ctrl ));
+  check_success(cmap_reg(&map, "users/{id}", user_ctrl));
   check_notnull(ctrl = cmap_match(&map, "/users/123", 10));
-  check()
+  check_success(
+      parseurl("/users/123", 10, ctrl->path, ctrl->pathlen, &urlargs));
+  create_dummy_request(&dummyreq, "/users/123");
+  check(ctrl->c(&dummyreq, &urlargs, NULL) == 123);
 
+  smap_clear(&urlargs);
+  check_success(cmap_reg(&map, "users/123", user123_ctrl));
+  check_notnull(ctrl = cmap_match(&map, "/users/123", 10));
+  check_success(
+      parseurl("/users/123", 10, ctrl->path, ctrl->pathlen, &urlargs));
+  check(ctrl->c(&dummyreq, &urlargs, NULL) == 42);
 
+  smap_clear(&urlargs);
+  create_dummy_request(&dummyreq, "/users/456");
+  check_notnull(ctrl = cmap_match(&map, "/users/456", 10));
+  check_success(
+      parseurl("/users/456", 10, ctrl->path, ctrl->pathlen, &urlargs));
+  check(ctrl->c(&dummyreq, &urlargs, NULL) == 456);
 
+  ctrl = NULL;
+  reqfree(&dummyreq);
+  cmap_free(&map);
+  smap_free(&urlargs);
+}
 
+int index_ctrl_specific(request *req, smap *urlparams, response *resp) {
+  return 52;
+}
+
+int index_ctrl_anything(request *req, smap *urlparams, response *resp) {
+  return 62;
+}
+void test_cmap_emptypath() {
+  cmap map = {0};
+  centry *ctrl;
+  smap urlargs = {0};
+  request req = {0};
+
+  check_success(smap_init(&urlargs, 64));
+  check_success(cmap_init(&map, 10));
+  check_success(cmap_reg(&map, "{anything}", index_ctrl_anything));
+  create_dummy_request(&req, "/");
+  check_notnull(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+  check_success(parseurl(req.resource.data,
+                         req.resource.size,
+                         ctrl->path,
+                         ctrl->pathlen,
+                         &urlargs));
+  check(ctrl->c(&req, &urlargs, NULL) == 62);
+
+  check_success(cmap_reg(&map, "/", index_ctrl_specific));
+  create_dummy_request(&req, "/");
+  check_notnull(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+  check_success(parseurl(req.resource.data,
+                         req.resource.size,
+                         ctrl->path,
+                         ctrl->pathlen,
+                         &urlargs));
+  check(ctrl->c(&req, &urlargs, NULL) == 52);
+
+  ctrl = NULL;
+  reqfree(&req);
+  cmap_free(&map);
+  smap_free(&urlargs);
+}
+
+int glob_ctrl(request *req, smap *urlparams, response *resp) { return 72; }
+int var_ctrl(request *req, smap *urlparams, response *resp) { return 82; }
+int match_any(request *req, smap *urlparams, response *resp) { return 92; }
+
+void test_cmap_globbing() {
+  cmap map = {0};
+  centry *ctrl = NULL;
+  request req = {0};
+  smap urlargs = {0};
+
+  check_success(smap_init(&urlargs, 64));
+  check_success(cmap_init(&map, 10));
+
+  // pattern: '*' should match '/' '/foo' but not '/foo/bar'
+  check_success(cmap_reg(&map, "*", glob_ctrl));
+  create_dummy_request(&req, "/");
+  check_notnull(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+  check_success(parseurl(req.resource.data,
+                         req.resource.size,
+                         ctrl->path,
+                         ctrl->pathlen,
+                         &urlargs));
+  check(ctrl->c(&req, &urlargs, NULL) == 72);
+  create_dummy_request(&req, "/foo");
+  check_notnull(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+  check_success(parseurl(req.resource.data,
+                         req.resource.size,
+                         ctrl->path,
+                         ctrl->pathlen,
+                         &urlargs));
+  check(ctrl->c(&req, &urlargs, NULL) == 72);
+  create_dummy_request(&req, "/foo/bar");
+  check_null(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+
+  // should have same meaning as previous one
+  cmap_clear(&map);
+  check_success(cmap_reg(&map, "/*", glob_ctrl));
+  create_dummy_request(&req, "/");
+  check_notnull(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+  check_success(parseurl(req.resource.data,
+                         req.resource.size,
+                         ctrl->path,
+                         ctrl->pathlen,
+                         &urlargs));
+  check(ctrl->c(&req, &urlargs, NULL) == 72);
+  create_dummy_request(&req, "/foo");
+  check_notnull(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+  check_success(parseurl(req.resource.data,
+                         req.resource.size,
+                         ctrl->path,
+                         ctrl->pathlen,
+                         &urlargs));
+  check(ctrl->c(&req, &urlargs, NULL) == 72);
+  create_dummy_request(&req, "/foo/bar");
+  check_null(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+
+  // should match '/' '/asd' but not /foo/bar.
+  // should be more specific than /*
+  check_success(cmap_reg(&map, "{any}", var_ctrl));
+  create_dummy_request(&req, "/");
+  check_notnull(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+  check_success(parseurl(req.resource.data,
+                         req.resource.size,
+                         ctrl->path,
+                         ctrl->pathlen,
+                         &urlargs));
+  check(ctrl->c(&req, &urlargs, NULL) == 82);
+  create_dummy_request(&req, "/foo/bar");
+  check_null(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+
+  // should match anything that does not
+  // otherwise have a mapping
+  check_success(cmap_reg(&map, "**", match_any));
+  create_dummy_request(&req, "/foo");
+  check_notnull(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+  check_success(parseurl(req.resource.data,
+                         req.resource.size,
+                         ctrl->path,
+                         ctrl->pathlen,
+                         &urlargs));
+  check(ctrl->c(&req, &urlargs, NULL) == 82);
+
+  create_dummy_request(&req, "/foo/bar");
+  check_notnull(ctrl = cmap_match(&map, req.resource.data, req.resource.size));
+  check_success(parseurl(req.resource.data,
+                         req.resource.size,
+                         ctrl->path,
+                         ctrl->pathlen,
+                         &urlargs));
+  check(ctrl->c(&req, &urlargs, NULL) == 92);
+}
+
+void test_path_validation() {
+  // cmap map = {0};
+  // centry *ctrl = NULL;
+  // request req = {0};
+  // smap urlargs = {0};
+
+  // see if only alphanumerical names, {}*/ are allowed
+  // make sure duplicate entries raise exceptions -> TODO 
+  // make sure full cmap also raises exception 
 }
 
 int main() {
   TEST(test_sb);
   TEST(test_smap);
   TEST(test_cmap);
+  TEST(test_cmap_emptypath);
+  TEST(test_cmap_globbing);
 }

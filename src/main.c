@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "../com/request.h"
+#include "../com/coordination.h"
 #include "../configuration/const.h"
 
 int main(int argc, char *argv[]) {

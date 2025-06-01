@@ -1,11 +1,13 @@
 #include "cmap.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "../com/request.h"
 #include "../com/response.h"
 #include "../utility/error.h"
+#include "../utility/functions.h"
 
 #define MAX_MATCHSCORE 255
 
@@ -108,13 +110,10 @@ int cmap_init(cmap *map, size_t capacity) {
   if (!map->entries) {
     return RAISE_MALLOC("failed to allocate memory for controller map");
   }
+  memset(map->index, 0, INDEX_MAX * sizeof(size_t));
   map->capacity = capacity;
   map->size = 0;
   return OK;
-}
-
-static bool isalphabetical(char c) {
-  return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
 
 // a valid path:
@@ -132,7 +131,7 @@ static bool valid_path(char *path, size_t pathlen) {
       }
       ++i;
       while (i < pathlen && path[i] != '}') { // between { and }
-        if (!isalphabetical(path[i])) {       // only alphabetical chars
+        if (!isalphanumeric(path[i])) {       // only alphabetical chars
           return false;
         }
         ++i;
@@ -166,7 +165,7 @@ static bool valid_path(char *path, size_t pathlen) {
       continue;
     }
     if (path[i] != '/' &&
-        !isalphabetical(path[i])) { // only accept [a..zA..Z/*{}]
+        !isalphanumeric(path[i])) { // only accept [a..zA..Z/*{}]
       return false;
     }
     ++i;
@@ -197,7 +196,11 @@ static int get_index(cmap *map, char c, int *index) {
     c += 'a' - 'A';
   }
   if (c >= 'a' && c <= 'z') {
-    *index = c;
+    *index = c - 'a' + 1;
+    return OK;
+  }
+  if (c >= '0' && c <= '9') {
+    *index = c - '0' + ('z' - 'a' + 1);
     return OK;
   }
   if (c == '*' || c == '{' || c == 0) {
@@ -213,6 +216,11 @@ int cmap_reg(cmap *map, char *path, controller c) {
     return RAISE_CMAPFULL(
         "The cmap has no capacity left, it could not be registered.");
   }
+  if (path[0] ==
+      '/') { // should be safe since all strings are at least 1 char long
+    // idea: dont store beginning / because it is always there
+    path++;
+  }
   size_t pathlen = strlen(path);
   size_t insert_at;
   if (!valid_path(path, pathlen)) {
@@ -222,18 +230,20 @@ int cmap_reg(cmap *map, char *path, controller c) {
   // global matcher goes to index one
   if (pathlen == 2 && path[0] == '*' && path[1] == '*') {
     index = -1;
-    insert_at = 1;
+    insert_at = 0;
   } else {
     if ((error = get_index(map, pathlen == 0 ? 0 : path[0], &index))) {
       return error;
     }
+    insert_at = map->index[index];
   }
 
   // copy the rest of the array one place to the right, making place for the new
   // entry
   memmove(map->entries + insert_at + 1,
           map->entries + insert_at,
-          map->size - insert_at);
+          (map->size - insert_at) * sizeof(centry));
+
   // shifting the larger indices by one
   for (size_t i = index + 1; i < INDEX_MAX; ++i) {
     ++map->index[i];
@@ -242,6 +252,7 @@ int cmap_reg(cmap *map, char *path, controller c) {
   if ((error = centry_init(map->entries + insert_at, path, pathlen, c))) {
     return error;
   }
+  ++map->size;
   return OK;
 }
 
@@ -251,24 +262,59 @@ static int get_start_and_end(cmap *map, char c, size_t *start, size_t *end) {
     return error;
   }
   *start = map->index[index];
-  *end = index + 1 == INDEX_MAX ? map->size : index + 1;
-  return RAISE_ARGERR("Cannot find mapping for non-alphabetical mapping %c", c);
+  *end = index + 1 == INDEX_MAX ? map->size : map->index[index + 1];
+  return OK;
+}
+
+static centry *getmatch(centry *entries,
+                        char *resbase,
+                        size_t resbaselen,
+                        size_t startindex,
+                        size_t endindex) {
+  centry *best = entries + startindex, *current;
+  matchscore bestmatch = matchcalc(best, resbase, resbaselen), currentmatch;
+  for (size_t i = startindex + 1; i < endindex; ++i) {
+    current = entries + i;
+    currentmatch = matchcalc(current, resbase, resbaselen);
+    // we take the smaller match score
+    if (matchcomp(currentmatch, bestmatch) < 0) {
+      best = current;
+      bestmatch = currentmatch;
+    }
+  }
+  if (ismatch(bestmatch)) {
+    return best;
+  }
+  return NULL;
+}
+
+static size_t get_resbaselen(char* resbase, size_t maxlen ){
+  for(size_t i = 0; i < maxlen; ++i){
+    if(resbase[i] == 0 || resbase[i] == '?'){
+      return i;
+    }
+    ++i;
+  }
+  return maxlen;
 }
 
 centry *cmap_match(cmap *map, char *res, size_t reslen) {
   int error;
+  centry *result;
+
   // We want to go through the entries that could match the
   // requested resource. We calculate for each a match score
   // that is based on how well the path of the entry matches
   // our request. We will return the best matching controller
-  if (!map || !res ) {
+  if (!map || !res) {
     return NULL;
   }
-  char *resbase = res+1;
-  size_t resbaselen = reslen - 1; // we skip the first / in the resource
+  char *resbase = res + 1;
+  //we are only interested in the part after the first / and before the ?
+  size_t resbaselen =get_resbaselen(resbase, reslen - 1) ;
   // get the index where the entries that could match are
   size_t startindex, endindex;
-  if (!resbaselen || resbase[0] == '?') {
+  if (!resbaselen ) {
     // this are the paths that match "/?.."
     if ((error = get_start_and_end(map, 0, &startindex, &endindex))) {
       return NULL;
@@ -281,26 +327,31 @@ centry *cmap_match(cmap *map, char *res, size_t reslen) {
   }
 
   if (startindex < endindex) {
-    centry *best = map->entries + startindex, *current;
-    matchscore bestmatch = matchcalc(best, resbase, resbaselen),
-               currentmatch;
-    for (size_t i = startindex + 1; i < endindex; ++i) {
-      current = map->entries + i;
-      currentmatch = matchcalc(current, resbase, resbaselen);
-      // we take the smaller match score
-      if (matchcomp(currentmatch, bestmatch) < 0) {
-        best = current;
-      }
+    if ((result = getmatch(
+             map->entries, resbase, resbaselen, startindex, endindex))) {
+      return result;
     }
-    if (ismatch(bestmatch)) {
-      return best;
+  }
+  // if the requested resource only contains a single token like /foo than maybe
+  // one of the paths at index[0] could match it - this is where a matcher like
+  // "/*" or "/{var}" would be inserted at
+  size_t sepcount = strncount(resbase, '/', resbaselen);
+  // only check if there is at most one separator, and if its there its the last char
+  if (sepcount == 0 || (sepcount == 1 && resbase[resbaselen - 1] == '/')) {
+    if ((error = get_start_and_end(map, 0, &startindex, &endindex))) {
+      return NULL;
+    }
+    if ((result = getmatch(
+             map->entries, resbase, resbaselen, startindex, endindex))) {
+      return result;
     }
   }
 
   // if we made it thus far that means that there were no matches
   // we see if there is a global matcher on position 0
   // if there is none, we return NULL
-  if (map->entries[0].c) {
+  if (map->entries[0].path &&
+      strneq(map->entries[0].path, map->entries[0].pathlen, "**", 2)) {
     return map->entries;
   }
 
@@ -309,11 +360,25 @@ centry *cmap_match(cmap *map, char *res, size_t reslen) {
 
 void cmap_free(cmap *map) {
   if (map) {
-    for (size_t i = 0; i < map->size; ++i) {
+    for (size_t i = 0; i < map->size; ++i) { // entries stored non-sequentially
       free(map->entries[i].path);
     }
     free(map->entries);
     map->capacity = 0;
     map->size = 0;
+  }
+}
+
+int cmap_clear(cmap *map) {
+  if (map && map->entries) {
+    for (size_t i = 0; i < map->size; ++i) { // entries stored non-sequentially
+      free(map->entries[i].path);
+    }
+    memset(map->entries, 0, map->capacity * sizeof(centry));
+    memset(map->index, 0, INDEX_MAX * sizeof(size_t));
+    map->size = 0;
+    return OK;
+  } else {
+    return RAISE_ARGERR("cannot clear null or uninitialized cmap");
   }
 }

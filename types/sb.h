@@ -55,4 +55,10 @@ int sbinsert(sb *str, size_t pos, const char *data, size_t len);
  * @param str Pointer to the string buffer to free.
  */
 void sbfree(sb *str);
+
+/**
+ * Cleares the string buffer. Does not reduce capacity.
+ * @return 0 on success, error code otherwise
+ */
+int sbclear(sb *str);
 #endif // SB_H

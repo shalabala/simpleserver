@@ -2,10 +2,10 @@
 #define COORDINATION_H
 #include <netinet/in.h>
 
-#include "request.h"
+#include "../types/cmap.h"
 #include "../types/sb.h"
 #include "../types/smap.h"
-#include "../types/cmap.h"
+#include "request.h"
 
 /**
  * Receives a request from a socket and returns it as a string buffer.
@@ -18,14 +18,19 @@ int reqrecieve(sb *str, int socket, size_t max_size);
 /**
  * Accepts the incoming request and processes it.
  * @param incoming_socket The socket to accept the request from.
+ * @param ctrls The controller mapping that handles the request
  * @param client_address The address of the client making the request.
  * @return 0 on success, or an error code on failure.
  */
-int acceptreq(int incoming_socket, struct sockaddr_in *client_address);
+int acceptreq(int incoming_socket,
+              cmap *ctrls,
+              struct sockaddr_in *client_address);
 
 /**
- * Parses the url parameters based on the matched controller entry and the request resource.
+ * Parses the url parameters based on the matched controller entry and the
+ * request resource.
  */
-int parseurl(char *reqres, size_t reqlen, char *path, size_t pathlen, smap *urlparams);
+int parseurl(
+    char *reqres, size_t reqlen, char *path, size_t pathlen, smap *urlparams);
 
 #endif

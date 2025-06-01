@@ -35,3 +35,7 @@ error *geterr() {
   globerr = NULL;
   return e;
 }
+
+void cleargloberr(){
+  globerr = NULL;
+}

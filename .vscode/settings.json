@@ -9,6 +9,10 @@
         "smap.h": "c",
         "cmap.h": "c",
         "functions.h": "c",
-        "const.h": "c"
+        "const.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "span": "c"
     }
 }
