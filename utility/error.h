@@ -17,7 +17,9 @@ typedef enum _errcode {
   UNSUPPORTED_METHOD,
   MALFORMED_REQ,
   CMAP_FULL,
-  INVALID_CONTROLLER_PATH
+  INVALID_CONTROLLER_PATH,
+  INVALID_TEMPLATE,
+  NOTFOUND
 } errcode;
 
 typedef struct _error {
@@ -35,6 +37,8 @@ extern error unsupported_method;
 extern error malformed_request;
 extern error cmap_full;
 extern error invalid_cpath;
+extern error invalid_template;
+extern error notfound;
 extern error *globerr;
 
 /**
@@ -71,5 +75,7 @@ void cleargloberr();
 #define RAISE_MALFORMEDREQ(msg, ...) (raise(msg, &receive_failed, ##__VA_ARGS__))
 #define RAISE_CMAPFULL(msg, ...) (raise(msg, &cmap_full, ##__VA_ARGS__))
 #define RAISE_INVALIDCPATH(msg, ...) (raise(msg, &invalid_cpath, ##__VA_ARGS__))
+#define RAISE_INVALIDTEMPLATE(msg, ...) (raise(msg, &invalid_template, ##__VA_ARGS__))
+#define RAISE_NOTFOUND(msg, ...) (raise(msg, &notfound, ##__VA_ARGS__))
 #define OK 0
 #endif // ERROR_H

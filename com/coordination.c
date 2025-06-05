@@ -2,12 +2,13 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include "coordination.h"
+#include "request.h"
 #include "../configuration/const.h"
 #include "../types/cmap.h"
 #include "../types/sb.h"
 #include "../utility/error.h"
 #include "../utility/functions.h"
-#include "request.h"
 
 int reqrecieve(sb *str, int socket, size_t max_size) {
   int error;
@@ -81,7 +82,7 @@ int acceptreq(int incoming_socket,
            matched_controller->pathlen, &urlargs);
 
         
-  matched_controller->c(&req, &urlargs, &response); 
+  matched_controller->c(&req, &urlargs, &response, NULL); 
   
   reqfree(&req);
   sbfree(&reqbuff);

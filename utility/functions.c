@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "functions.h"
-bool strneq(const char *key1,
+bool streq(const char *key1,
             size_t key1len,
             const char *key2,
             size_t key2len) {

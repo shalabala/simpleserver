@@ -1,6 +1,7 @@
 #ifndef RESPONSE_H
 #define RESPONSE_H
 #include <stdint.h>
+#include "../types/smap.h"
 
 typedef struct _responsecode {
   uint16_t code;
@@ -20,7 +21,10 @@ int respinit(response *resp);
 
 int respsend(response *resp, int socket);
 
+int create_html(response *resp, const char *file, smap *context);
+
 void respfree(response *resp);
+
 
 
 #endif // RESPONSE_H

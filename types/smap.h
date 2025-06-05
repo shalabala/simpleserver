@@ -84,4 +84,6 @@ void smap_free(smap *map);
  * @return 0 on success, or an error code on failure.
  */
 int smap_clear(smap *map);
+
+int smap_del(smap *map, char *key, size_t keylen);
 #endif // SMAP_H

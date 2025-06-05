@@ -8,12 +8,13 @@
 /**
  * Signature for a controller function.
  * @param req Pointer to the request structure.
- * @param map Pointer to the smap containing url parameters.
+ * @param url_params Pointer to the smap containing url parameters.
  * @param res Pointer to the response structure to fill with data.
+ * @param context Pointer to the initialized context
  * @return An integer indicating the result of the controller execution.
  *        0 on success, or an error code on failure.
  */
-typedef int (*controller)(request *, smap *, response *);
+typedef int (*controller)(request *, smap *, response *, smap*);
 
 /**
  * Controller entry structure. Contains the path and the controller function.

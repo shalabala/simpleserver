@@ -351,7 +351,7 @@ centry *cmap_match(cmap *map, char *res, size_t reslen) {
   // we see if there is a global matcher on position 0
   // if there is none, we return NULL
   if (map->entries[0].path &&
-      strneq(map->entries[0].path, map->entries[0].pathlen, "**", 2)) {
+      streq(map->entries[0].path, map->entries[0].pathlen, "**", 2)) {
     return map->entries;
   }
 

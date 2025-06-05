@@ -9,7 +9,7 @@
 #include "request.h"
 
 static method getmethod(char *methodName, size_t len) {
-  if (strneq(methodName, len, "GET", 3)) {
+  if (streq(methodName, len, "GET", 3)) {
     return GET;
   }
 

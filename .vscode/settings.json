@@ -13,6 +13,13 @@
         "array": "c",
         "string": "c",
         "string_view": "c",
-        "span": "c"
+        "span": "c",
+        "response.h": "c",
+        "bitset": "c",
+        "format": "c",
+        "initializer_list": "c",
+        "coordination.h": "c",
+        "chrono": "c",
+        "variant": "c"
     }
 }

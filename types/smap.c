@@ -119,7 +119,7 @@ int smap_upsert(smap *map,
   if (!map || !key || !value || keylen == 0 || map->mask >= map->bucketsnum) {
     return RAISE_ARGERR(
         "Cannot upsert into the smap with the provided arguments"); // invalid
-                                                                   // arguments
+                                                                    // arguments
   }
 
   size_t bucketn = hash(key, keylen) & map->mask;
@@ -133,7 +133,7 @@ int smap_upsert(smap *map,
   }
   while (bucket) {
     // UPDATE
-    if (strneq(key, keylen, bucket->key, bucket->keylen)) {
+    if (streq(key, keylen, bucket->key, bucket->keylen)) {
       return snode_vupdate(bucket, value, vallen);
     }
 
@@ -163,7 +163,7 @@ snode *smap_get(smap *map, const char *key, size_t keylen) {
     return NULL; // No bucket or no key in the bucket
   }
 
-  while (bucket && !strneq(key, keylen, bucket->key, bucket->keylen)) {
+  while (bucket && !streq(key, keylen, bucket->key, bucket->keylen)) {
     bucket = bucket->next;
   }
   return bucket;
@@ -232,4 +232,36 @@ int smap_clear(smap *map) {
   memset(map->buckets, 0, map->bucketsnum * sizeof(snode));
   map->size = 0;
   return OK;
+}
+
+int smap_del(smap *map, char *key, size_t keylen) {
+  if (!map || !key || !keylen) {
+    return RAISE_ARGERR("invalid arguments given to smap_del");
+  }
+
+  size_t bucketn = hash(key, keylen) & map->mask;
+  snode *current = map->buckets + bucketn, *prev = NULL;
+  while (current) {
+    if (streq(current->key, current->keylen, key, keylen)) {
+      if (prev == NULL) {
+        if (current->next) {
+          memcpy(map->buckets + bucketn, current->next, sizeof(snode));
+        } else {
+          memset(map->buckets + bucketn, 0, sizeof(snode));
+        }
+        --map->size;
+        return OK;
+      } else {
+        prev->next = current->next;
+        free(current->key);
+        free(current->value);
+        free(current);
+        --map->size;
+        return OK;
+      }
+    }
+    prev = current;
+    current = current->next;
+  }
+  return RAISE_NOTFOUND("item with was not found in smap");
 }

@@ -7,9 +7,12 @@
 #include <unistd.h>
 
 #include "../com/coordination.h"
+#include "../types/cmap.h"
 #include "../configuration/const.h"
 
 int main(int argc, char *argv[]) {
+  cmap controllers;
+  cmap_init(&controllers, 64);
   int outgoing_socket, incoming_socket;
   struct sockaddr_in server_address, client_address;
   socklen_t client_address_length = sizeof(client_address);
@@ -49,10 +52,10 @@ int main(int argc, char *argv[]) {
                              (struct sockaddr *)&client_address,
                              &client_address_length);
 
-    acceptreq(incoming_socket, &client_address);
+    acceptreq(incoming_socket, &controllers,&client_address);
     
     close(incoming_socket);
   }
-
+  cmap_free(&controllers);
   return 0;
 }

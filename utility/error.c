@@ -9,6 +9,8 @@ error unsupported_method = {"", ERROR, UNSUPPORTED_METHOD};
 error malformed_request = {"", ERROR, MALFORMED_REQ};
 error cmap_full ={"", FATAL, CMAP_FULL};
 error invalid_cpath ={"", FATAL, INVALID_CONTROLLER_PATH};
+error invalid_template ={"", ERROR, INVALID_TEMPLATE};
+error notfound ={"", WARNING, NOTFOUND};
 error *globerr = NULL;
 
 int raise(char *c, error *e, ...) {
