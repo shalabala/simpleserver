@@ -1,1 +1,0 @@
-\r\n\r\n\r\nHello!1 is a nice number! user1 is a stupid user!2 is a nice number! user2 is a stupid user!3 is a nice number! user3 is a stupid user!\r\nuserA is my favourite user, userB is my favourite user, userC is my favourite user, \r\n{{this should get rendered normally}}\r\n{{elif should get rendered normally as well}}\r\n\r\n

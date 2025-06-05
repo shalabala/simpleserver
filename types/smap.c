@@ -243,9 +243,13 @@ int smap_del(smap *map, char *key, size_t keylen) {
   snode *current = map->buckets + bucketn, *prev = NULL;
   while (current) {
     if (streq(current->key, current->keylen, key, keylen)) {
+      free(current->key);
+      free(current->value);
       if (prev == NULL) {
         if (current->next) {
-          memcpy(map->buckets + bucketn, current->next, sizeof(snode));
+          snode *next = current->next;
+          memcpy(map->buckets + bucketn, next, sizeof(snode));
+          free(next);
         } else {
           memset(map->buckets + bucketn, 0, sizeof(snode));
         }
@@ -253,8 +257,6 @@ int smap_del(smap *map, char *key, size_t keylen) {
         return OK;
       } else {
         prev->next = current->next;
-        free(current->key);
-        free(current->value);
         free(current);
         --map->size;
         return OK;

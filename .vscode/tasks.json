@@ -8,7 +8,7 @@
                 "clean",
                 "debug",
                 "test",
-              //     "sanitize=true"
+                   "sanitize=true"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

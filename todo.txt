@@ -1,6 +1,6 @@
-- finish templating engine
-- write test for templating engine
-- debug
+- finish templating engine ✅
+- write test for templating engine ✅
+- debug ✅
 - finish response creating and sending helpers
 - finish request handling orchestration
 - add dummy data source: csv with int index

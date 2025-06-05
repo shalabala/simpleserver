@@ -57,14 +57,14 @@ static int find_end_tag(char *src,
     if (i >= slen) {
       return i;
     }
-    if (i + endlen < slen && src[i - 1] != '\\' &&
+    if (i + endlen <= slen && src[i - 1] != '\\' &&
         streq(end, endlen, src + i, endlen)) {
       if (num_of_begins == 0) {
         break;
       }
       --num_of_begins;
 
-    } else if ((i + beginlen) < slen && src[i - 1] != '\\' &&
+    } else if ((i + beginlen) <= slen && src[i - 1] != '\\' &&
                streq(begin, beginlen, src + i, beginlen)) {
       ++num_of_begins;
     }
@@ -139,15 +139,15 @@ static int render_template_inner(
   int error;
   while (i < slen) {
     if (src[i] == '{' && i + 1 < slen && src[i+1] == '{' &&
-        (i - 1 == 0 || src[i - 1] != '\\')) {
+        (i == 0 || src[i - 1] != '\\')) {
       i += 2; // i points for the first charachter after {{
-      if (i + 4 < slen && streq(src + i, 4, "for ", 4)) {
+      if (i + 4 <= slen && streq(src + i, 4, "for ", 4)) {
         // HANDLE FOR
         // find closing {{endfor}}
         size_t beginfor = i + 4;
         i = find_end_tag(src, i, slen, EXP_LEN(FOR), EXP_LEN(ENDFOR));
 
-        if (i + STRLEN(ENDFOR) >= slen) {
+        if (i + STRLEN(ENDFOR) > slen) {
           return RAISE_INVALIDTEMPLATE("invalid template: found {{for ..}} at "
                                        "%lu without closing {{endfor}}",
                                        beginfor);
@@ -158,25 +158,25 @@ static int render_template_inner(
         }
         i += STRLEN(ENDFOR);
         continue;
-      } else if (i + 3 < slen && streq(src + i, 3, "if ", 3)) {
+      } else if (i + 3 <= slen && streq(src + i, 3, "if ", 3)) {
         // HANDLE IF
         size_t beginif = i + 3;
         i = find_end_tag(src, i, slen, EXP_LEN(IF), EXP_LEN(ENDIF));
 
-        if (i + STRLEN(ENDIF) >= slen) {
+        if (i + STRLEN(ENDIF) > slen) {
           return RAISE_INVALIDTEMPLATE("invalid template: found {{if ..}} at "
                                        "%lu without closing {{endif}}",
                                        beginif);
         }
         if ((error = handle_if(
-                 dest, src + beginif, slen - beginif, context, varnamebuff))) {
+                 dest, src + beginif, i - beginif, context, varnamebuff))) {
           return error;
         }
         i += STRLEN(ENDIF);
         continue;
       } else {
         size_t varbegin = i;
-        while (i + 2 < slen && !streq(src + i, 2, "}}", 2)) {
+        while (i + 2 <= slen && !streq(src + i, 2, "}}", 2)) {
           if (!isvarnamechar(src[i])) {
             return RAISE_INVALIDTEMPLATE(
                 "invalid variable name in template at %lu, only alphanumeric "
@@ -302,24 +302,24 @@ handle_for(sb *dest, char *src, size_t slen, smap *context, sb *varnamebuff) {
     char buffer[buffsize];
     memset(buffer, 0, buffsize);
     strncpy(buffer, src + collectionvar_begin, collectionvar_len);
-    buffer[buffsize] = 0;
+    buffer[buffsize-1] = 0;
     int start = atoi(buffer);
     memset(buffer, 0, buffsize);
     strncpy(buffer, src + endvar_begin, endvar_len);
-    buffer[buffsize] = 0;
+    buffer[buffsize-1] = 0;
     int end = atoi(buffer);
     int step = 1;
     if (has_step_var) {
       memset(buffer, 0, buffsize);
       strncpy(buffer, src + stepvar_begin, stepvar_len);
-      buffer[buffsize] = 0;
+      buffer[buffsize-1] = 0;
       step = atoi(buffer);
     }
     for (int i = start; i < end; i += step) {
       // putting loop variable into context
       memset(buffer, 0, buffsize);
       snprintf(buffer, buffsize, "%d", i);
-      buffer[buffsize] = 0;
+      buffer[buffsize-1] = 0;
       if ((error = smap_upsert(context,
                                src + varname_begin,
                                varname_len,
@@ -434,9 +434,9 @@ handle_if(sb *dest, char *src, size_t slen, smap *context, sb *varnamebuff) {
   bool noelif = false;
   int nest_count = 0;
   while (true) {
-    if (i + STRLEN(IF) < slen && isif(src, i) && src[i - 1] != '\\') {
+    if (i + STRLEN(IF) <= slen && isif(src, i) && src[i - 1] != '\\') {
       ++nest_count;
-    } else if (i + STRLEN(ENDIF) < slen && isendif(src, i) &&
+    } else if (i + STRLEN(ENDIF) <= slen && isendif(src, i) &&
                src[i - 1] != '\\') {
       --nest_count;
     } else if (i >= slen) {
@@ -447,13 +447,13 @@ handle_if(sb *dest, char *src, size_t slen, smap *context, sb *varnamebuff) {
         return RAISE_INVALIDTEMPLATE(
             "invalid template: found {{if ..}} without closing {{endif}}");
       }
-    } else if (i + STRLEN(ELIF) < slen && iselif(src, i) &&
+    } else if (i + STRLEN(ELIF) <= slen && iselif(src, i) &&
                src[i - 1] != '\\') {
       if (nest_count == 0) {
         endofblock = i;
         break;
       }
-    } else if (i + STRLEN(ELSE) < slen && iselse(src, i) &&
+    } else if (i + STRLEN(ELSE) <= slen && iselse(src, i) &&
                src[i - 1] != '\\') {
       if (nest_count == 0) {
         endofblock = i;

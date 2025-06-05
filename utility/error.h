@@ -7,7 +7,12 @@
 #include <string.h>
 
 #define ERRLENGTH 256
+#define NO_OF_ERRORLEVELS 4
+#define NO_OF_ERRORS 100
+
 typedef enum _severity { WARNING, ERROR, CRITICAL, FATAL } severity;
+
+typedef void (*handler)();
 
 typedef enum _errcode {
   MALLOC = 1,
@@ -42,6 +47,16 @@ extern error notfound;
 extern error *globerr;
 
 /**
+ * Severity level based handlers.
+ */
+extern handler lvl_handler[NO_OF_ERRORLEVELS];
+
+/**
+ * Error code based handlers.
+ */
+extern handler error_handler[NO_OF_ERRORS];
+
+/**
  * Signifies that an error has occurred. Returns the error code.
  * The error message is formatted using the provided format string and
  * arguments.
@@ -63,6 +78,22 @@ bool haserr();
  */
 error *geterr();
 
+/**
+ * Register an error handler based on the errors severity.
+ */
+void reg_err_level_handler(severity severity, handler handler);
+
+/**
+ * Register an error handler based on the error code.
+ */
+void reg_err_kind_handler(errcode code, handler handler);
+
+/**
+ * Prints error message and then aborts the program. Default error handler for
+ * fatal errors.
+ */
+void fatal_error_handler();
+
 void cleargloberr();
 
 #define RAISE_MALLOC(msg, ...) (raise(msg, &malloc_err, ##__VA_ARGS__))
@@ -72,10 +103,12 @@ void cleargloberr();
   (raise(msg, &bufflimit_reached, ##__VA_ARGS__))
 #define RAISE_UNSPMETH(msg, ...)                                               \
   (raise(msg, &unsupported_method, ##__VA_ARGS__))
-#define RAISE_MALFORMEDREQ(msg, ...) (raise(msg, &receive_failed, ##__VA_ARGS__))
+#define RAISE_MALFORMEDREQ(msg, ...)                                           \
+  (raise(msg, &receive_failed, ##__VA_ARGS__))
 #define RAISE_CMAPFULL(msg, ...) (raise(msg, &cmap_full, ##__VA_ARGS__))
 #define RAISE_INVALIDCPATH(msg, ...) (raise(msg, &invalid_cpath, ##__VA_ARGS__))
-#define RAISE_INVALIDTEMPLATE(msg, ...) (raise(msg, &invalid_template, ##__VA_ARGS__))
+#define RAISE_INVALIDTEMPLATE(msg, ...)                                        \
+  (raise(msg, &invalid_template, ##__VA_ARGS__))
 #define RAISE_NOTFOUND(msg, ...) (raise(msg, &notfound, ##__VA_ARGS__))
 #define OK 0
 #endif // ERROR_H

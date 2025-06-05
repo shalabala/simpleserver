@@ -6,12 +6,12 @@
 #include "../com/coordination.h"
 #include "../com/request.h"
 #include "../com/response.h"
+#include "../template/template.h"
 #include "../types/cmap.h"
 #include "../types/sb.h"
 #include "../types/smap.h"
 #include "../utility/error.h"
 #include "../utility/functions.h"
-#include "../template/template.h"
 
 /**
  * Run the test.
@@ -138,7 +138,9 @@ int user_ctrl(request *req, smap *urlparams, response *resp, smap *context) {
   return atoi(id->value);
 }
 
-int user123_ctrl(request *req, smap *urlparams, response *resp, smap *context) { return 42; }
+int user123_ctrl(request *req, smap *urlparams, response *resp, smap *context) {
+  return 42;
+}
 
 void create_dummy_request(request *req, char *resource) {
   if (!req->resource.data) {
@@ -190,11 +192,17 @@ void test_cmap() {
   smap_free(&urlargs);
 }
 
-int index_ctrl_specific(request *req, smap *urlparams, response *resp, smap *context) {
+int index_ctrl_specific(request *req,
+                        smap *urlparams,
+                        response *resp,
+                        smap *context) {
   return 52;
 }
 
-int index_ctrl_anything(request *req, smap *urlparams, response *resp, smap *context) {
+int index_ctrl_anything(request *req,
+                        smap *urlparams,
+                        response *resp,
+                        smap *context) {
   return 62;
 }
 void test_cmap_emptypath() {
@@ -231,9 +239,15 @@ void test_cmap_emptypath() {
   smap_free(&urlargs);
 }
 
-int glob_ctrl(request *req, smap *urlparams, response *resp, smap *context) { return 72; }
-int var_ctrl(request *req, smap *urlparams, response *resp, smap *context) { return 82; }
-int match_any(request *req, smap *urlparams, response *resp, smap *context) { return 92; }
+int glob_ctrl(request *req, smap *urlparams, response *resp, smap *context) {
+  return 72;
+}
+int var_ctrl(request *req, smap *urlparams, response *resp, smap *context) {
+  return 82;
+}
+int match_any(request *req, smap *urlparams, response *resp, smap *context) {
+  return 92;
+}
 
 void test_cmap_globbing() {
   cmap map = {0};
@@ -321,31 +335,36 @@ void test_cmap_globbing() {
                          ctrl->pathlen,
                          &urlargs));
   check(ctrl->c(&req, &urlargs, NULL, NULL) == 92);
+
+  reqfree(&req);
+  smap_free(&urlargs);
+  cmap_free(&map);
 }
 
-char *template ="{{if falsevar1}}\r\n"
-"THIS should not be visible!\r\n"
-"{{elif falsevar2}}\r\n"
-"THIS should not be visible EITHER!\r\n"
-"{{else}}\r\n"
-"{{if truevar}}\r\n"
-"Hello!{{for e in 1..4}}{{e}} is a nice number! {{users[e]}} is a stupid user!{{endfor}}\r\n"
-"{{for user in users}}{{user}} is my favourite user, {{endfor}}\r\n"
-"\\{{this should get rendered normally}}\r\n"
-"{{if truevar}} \\{{elif should get rendered normally as well}}  {{endif}}\r\n"
-"{{else}} this should not render \r\n"
-"{{endif}}{{endif}}\r\n";
+char *template =
+    "{{if falsevar1}}\r\n"
+    "THIS should not be visible!\r\n"
+    "{{elif falsevar2}}\r\n"
+    "THIS should not be visible EITHER!\r\n"
+    "{{else}}\r\n"
+    "{{if truevar}}\r\n"
+    "Hello!{{for e in 1..4}}{{e}} is a nice number! {{users[e]}} is a stupid "
+    "user!{{endfor}}\r\n"
+    "{{for user in users}}{{user}} is my favourite user, {{endfor}}\r\n"
+    "\\{{this should get rendered normally}}\r\n"
+    "{{if truevar}} \\{{elif should get rendered normally as well}}  "
+    "{{endif}}\r\n"
+    "{{else}} this should not render \r\n"
+    "{{endif}}{{endif}}\r\n";
 
-char *rendered= "\r\n"
-"\r\n"
-"\r\n"
-"Hello!1 is a nice number! user1 is a stupid user!2 is a nice number! user2 is a stupid user!3 is a nice number! user3 is a stupid user!\r\n"
-"userA is my favourite user, userB is my favourite user, userC is my favourite user, \r\n"
-"{{this should get rendered normally}}\r\n"
-"{{elif should get rendered normally as well}}\r\n"
-"\r\n";
+char *rendered =
+    "\r\n\r\nHello!1 is a nice number! user1 is a stupid user!2 is a nice "
+    "number! user2 is a stupid user!3 is a nice number! user3 is a stupid "
+    "user!\r\nuserA is my favourite user, userB is my favourite user, userC is "
+    "my favourite user, \r\n{{this should get rendered normally}}\r\n {{elif "
+    "should get rendered normally as well}}  \r\n\r\n";
 
-void test_template(){
+void test_template() {
   smap context = {0};
   sb dest = {0};
   check_success(smap_init(&context, 32));
@@ -353,14 +372,15 @@ void test_template(){
   check_success(smap_upsert(&context, EXP_LEN("users[1]"), EXP_LEN("user1")));
   check_success(smap_upsert(&context, EXP_LEN("users[2]"), EXP_LEN("user2")));
   check_success(smap_upsert(&context, EXP_LEN("users[3]"), EXP_LEN("user3")));
-  check_success(smap_upsert(&context, EXP_LEN("users"), EXP_LEN("userA;userB;userC")));
+  check_success(
+      smap_upsert(&context, EXP_LEN("users"), EXP_LEN("userA;userB;userC")));
   check_success(smap_upsert(&context, EXP_LEN("falsevar1"), EXP_LEN("false")));
   check_success(smap_upsert(&context, EXP_LEN("falsevar2"), EXP_LEN("false")));
   check_success(smap_upsert(&context, EXP_LEN("truevar"), EXP_LEN("true")));
 
   check_success(render_template(&dest, template, strlen(template), &context));
 
-  check(streq(dest.data, dest.size, template, strlen(template)));
+  check(streq(dest.data, dest.size, rendered, strlen(rendered)));
 
   sbfree(&dest);
   smap_free(&context);
@@ -373,8 +393,8 @@ void test_path_validation() {
   // smap urlargs = {0};
 
   // see if only alphanumerical names, {}*/ are allowed
-  // make sure duplicate entries raise exceptions -> TODO 
-  // make sure full cmap also raises exception 
+  // make sure duplicate entries raise exceptions -> TODO
+  // make sure full cmap also raises exception
 }
 
 int main() {
