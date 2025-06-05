@@ -24,7 +24,9 @@ typedef enum _errcode {
   CMAP_FULL,
   INVALID_CONTROLLER_PATH,
   INVALID_TEMPLATE,
-  NOTFOUND
+  ITEM_NOTFOUND,
+  FILE_NOTFOUND,
+  INVALID_CONTROLLER_CONFIG
 } errcode;
 
 typedef struct _error {
@@ -43,7 +45,9 @@ extern error malformed_request;
 extern error cmap_full;
 extern error invalid_cpath;
 extern error invalid_template;
-extern error notfound;
+extern error item_notfound;
+extern error file_notfound;
+extern error invalid_ctrl_config;
 extern error *globerr;
 
 /**
@@ -73,10 +77,9 @@ int raise(char *c, error *e, ...);
 bool haserr();
 
 /**
- * Retrieves the current error and clears the global error variable.
- * @return The current error structure.
+ * Retrieves the current error code.
  */
-error *geterr();
+int geterrcode();
 
 /**
  * Register an error handler based on the errors severity.
@@ -109,6 +112,8 @@ void cleargloberr();
 #define RAISE_INVALIDCPATH(msg, ...) (raise(msg, &invalid_cpath, ##__VA_ARGS__))
 #define RAISE_INVALIDTEMPLATE(msg, ...)                                        \
   (raise(msg, &invalid_template, ##__VA_ARGS__))
-#define RAISE_NOTFOUND(msg, ...) (raise(msg, &notfound, ##__VA_ARGS__))
+#define RAISE_ITEM_NOTFOUND(msg, ...) (raise(msg, &item_notfound, ##__VA_ARGS__))
+#define RAISE_INVALID_CTRLCONF(msg, ...) (raise(msg, &invalid_ctrl_config, ##__VA_ARGS__))
+#define RAISE_FILE_NOTFOUND(msg, ...) (raise(msg, &file_notfound, ##__VA_ARGS__))
 #define OK 0
 #endif // ERROR_H

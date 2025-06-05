@@ -10,35 +10,53 @@
 /**
  * Controller mapped to "/"
  */
-int ctrl_index(request *request, smap *urlargs, response *response, smap *context);
+int ctrl_index(request *request,
+               smap *urlargs,
+               response *response,
+               smap *context);
 
 /**
- * Controller mapped to "/about"
+ * Controller mapped to "/welcome/{id}"
  */
-int ctrl_about(request *request, smap *urlargs, response *response, smap *context);
+int ctrl_welcome(request *request,
+                 smap *urlargs,
+                 response *response,
+                 smap *context);
 
 /**
  * Controller mapped to "**" - matches everything that does not have a more
  * specific controller
  */
-int ctrl_not_found(request *request, smap *urlargs, response *response, smap *context);
+int ctrl_not_found(request *request,
+                   smap *urlargs,
+                   response *response,
+                   smap *context);
 
 /**
- * Controller mapped to /user/{id}
+ * Controller mapped to /users
  */
-int ctrl_user(request *request, smap *urlargs, response *response, smap *context);
+int ctrl_list_users(request *request,
+                    smap *urlargs,
+                    response *response,
+                    smap *context);
 
 /**
- * Controller mapped to /users?name=
+ *Controller mapped to /login
  */
-int ctrl_list_user(request *request, smap *urlargs, response *response, smap *context);
+int ctrl_login(request *request,
+               smap *urlargs,
+               response *response,
+               smap *context);
 
 inline int reg_controllers(cmap *controllers) {
-  return 0 || cmap_reg(controllers, "/", ctrl_index) ||
-         cmap_reg(controllers, "/about", ctrl_about) ||
-         cmap_reg(controllers, "/users", ctrl_list_user) ||
-         cmap_reg(controllers, "/user/{id}", ctrl_user) ||
-         cmap_reg(controllers, "**", ctrl_not_found);
+  if (cmap_reg(controllers, "/", ctrl_index) ||
+      cmap_reg(controllers, "/welcome/{id}", ctrl_welcome) ||
+      cmap_reg(controllers, "/users", ctrl_list_users) ||
+      cmap_reg(controllers, "/login", ctrl_login) ||
+      cmap_reg(controllers, "**", ctrl_not_found)) {
+    return RAISE_INVALID_CTRLCONF("Invalid controller configuration");
+  }
+  return 0;
 }
 
 #endif

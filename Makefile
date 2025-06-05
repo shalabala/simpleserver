@@ -1,6 +1,6 @@
 CC = gcc
 
-SRC_DIRS = com configuration types utility controller template
+SRC_DIRS = com configuration types utility controller template dal
 OBJ_DIRS = $(addprefix ./build/, $(SRC_DIRS))
 OBJ_DIRS += build/src
 

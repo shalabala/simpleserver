@@ -125,7 +125,7 @@ void test_smap() {
   check_null(node = smap_get(&map, key, strlen(key)));
 
   check_fail(smap_del(&map, EXP_LEN("KEYNOTFOUND")));
-  check(geterr()->code == NOTFOUND);
+  check(geterr()->code == ITEM_NOTFOUND);
 
   // test empty key
   check_fail(smap_upsert(&map, "", 0, value, strlen(value)));

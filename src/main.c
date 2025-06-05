@@ -8,11 +8,14 @@
 
 #include "../com/coordination.h"
 #include "../types/cmap.h"
+#include "../controller/controller.h"
 #include "../configuration/const.h"
 
 int main(int argc, char *argv[]) {
   cmap controllers;
   cmap_init(&controllers, 64);
+  reg_controllers(&controllers);
+  
   int outgoing_socket, incoming_socket;
   struct sockaddr_in server_address, client_address;
   socklen_t client_address_length = sizeof(client_address);

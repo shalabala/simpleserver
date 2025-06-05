@@ -10,7 +10,10 @@ error malformed_request = {"", ERROR, MALFORMED_REQ};
 error cmap_full = {"", FATAL, CMAP_FULL};
 error invalid_cpath = {"", FATAL, INVALID_CONTROLLER_PATH};
 error invalid_template = {"", ERROR, INVALID_TEMPLATE};
-error notfound = {"", WARNING, NOTFOUND};
+error item_notfound = {"", WARNING, ITEM_NOTFOUND};
+error file_notfound = {"", WARNING, FILE_NOTFOUND};
+error invalid_ctrl_config = {"", FATAL, INVALID_CONTROLLER_CONFIG};
+
 error *globerr = NULL;
 
 handler lvl_handler[NO_OF_ERRORLEVELS] = {0};
@@ -40,10 +43,11 @@ int raise(char *c, error *e, ...) {
 
 bool haserr() { return globerr != NULL; }
 
-error *geterr() {
-  error *e = globerr;
-  globerr = NULL;
-  return e;
+int geterrcode() {
+  if (globerr) {
+    return globerr->code;
+  }
+  return 0;
 }
 
 void cleargloberr() { globerr = NULL; }

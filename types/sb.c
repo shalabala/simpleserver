@@ -102,7 +102,7 @@ int sbclear(sb *str) {
     memset(str->data, 0, str->capacity);
     str->size = 0;
     return OK;
-  }else{
+  } else {
     return RAISE_ARGERR("cannot clear uninitialized or null string buffer");
   }
 }

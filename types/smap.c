@@ -265,5 +265,5 @@ int smap_del(smap *map, char *key, size_t keylen) {
     prev = current;
     current = current->next;
   }
-  return RAISE_NOTFOUND("item with was not found in smap");
+  return RAISE_ITEM_NOTFOUND("item with was not found in smap");
 }
