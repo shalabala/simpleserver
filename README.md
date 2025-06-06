@@ -7,7 +7,7 @@ I only tested it on Linux. To start it simply compile the project with `make cle
 ### Controllers
 To define your own pages you need to register a new controller in the controller.c/.h files. A controller receives:
 - a `request` pointer: this contains information about the request, like query parameters, method, resource string and header values
-- an `smap *urlargs`: this contains all parts of the url that were mapped by the controller registration. These are __not__ the query parameters. Example: if the controller is registered for the path "/user/{id}" and the HTTP request is made for "/users/7" then `urlargs` will have the mapping `"id"->"7"`
+- an `smap *urlargs`: this contains all parts of the url that were mapped by the controller registration. These are __not__ the query parameters. Example: if the controller is registered for the path "/user/{id}" and the HTTP request is made for "/user/7" then `urlargs` will have the mapping `"id"->"7"`
 - a `response`pointer: this needs to be filled by the controller. Useful helper methods are `create_html` `set_resp_code` and `notfound`
 - a `context` pointer: this also needs to be filled for the template parameters that is used to render the html body.
 
