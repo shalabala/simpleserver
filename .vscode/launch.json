@@ -5,7 +5,7 @@
             "name": "Debug with GDB",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/test", 
+            "program": "${workspaceFolder}/simpleserver", 
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

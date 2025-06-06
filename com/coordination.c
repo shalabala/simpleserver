@@ -2,16 +2,17 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-#include "coordination.h"
-#include "request.h"
 #include "../configuration/const.h"
 #include "../types/cmap.h"
 #include "../types/sb.h"
 #include "../utility/error.h"
 #include "../utility/functions.h"
+#include "coordination.h"
+#include "request.h"
 
 int reqrecieve(sb *str, int socket, size_t max_size) {
   int error;
+  check_for_errors();
   if (!str) {
     return RAISE_ARGERR("cannot receive into NULL buffer");
   }
@@ -44,8 +45,9 @@ int reqrecieve(sb *str, int socket, size_t max_size) {
 int acceptreq(int incoming_socket,
               cmap *ctrls,
               struct sockaddr_in *client_address) {
+  check_for_errors();
+  int error;
   if (incoming_socket < 0) {
-    perror("Accept failed");
     return RAISE_RECVFAIL(
         "Could not accept request"); // Continue to the next iteration
   }
@@ -55,41 +57,61 @@ int acceptreq(int incoming_socket,
   centry *matched_controller;
   response response;
   smap urlargs;
+  smap context;
 
-  sbinit(&reqbuff, 64);
-  smap_init(&urlargs, 32);
+  if ((error = sbinit(&reqbuff, 64) || smap_init(&urlargs, 32) ||
+               smap_init(&context, 64) || respinit(&response))) {
+    sbfree(&reqbuff);
+    smap_free(&context);
+    smap_free(&context);
+    respfree(&response);
+    return error;
+  }
 
   printf("Connection accepted from %s:%d\n",
          inet_ntoa(client_address->sin_addr),
          ntohs(client_address->sin_port));
 
-  send(incoming_socket,
-       welcomemsg,
-       strlen(welcomemsg),
-       0); // Send a welcome message
-
-  
+  // send(incoming_socket,
+  //      welcomemsg,
+  //      strlen(welcomemsg),
+  //      0); // Send a welcome message
 
   reqrecieve(&reqbuff, incoming_socket, MAX_REQUEST_SIZE);
   parse(&req, &reqbuff);
   reqprint(&req);
 
   matched_controller = cmap_match(ctrls, req.resource.data, req.resource.size);
-  
+
   parseurl(req.resource.data,
            req.resource.size,
            matched_controller->path,
-           matched_controller->pathlen, &urlargs);
+           matched_controller->pathlen,
+           &urlargs);
 
-        
-  matched_controller->c(&req, &urlargs, &response, NULL); 
-  
+  matched_controller->c(&req, &urlargs, &response, &context);
+  respprint(&response);
+  if (geterrcode()) {
+    fprintf(
+        stderr,
+        "Something went wrong while handling request. Error description: %s\n",
+        globerr->description);
+    respclear(&response);
+    create_html(&response, "error.html", &context);
+    set_resp_code(&response, "Internal Server Error", 500);
+    cleargloberr();
+    respprint(&response);
+  }
+
+  respsend(&response, incoming_socket);
+
   reqfree(&req);
   sbfree(&reqbuff);
+  smap_free(&context);
   smap_free(&urlargs);
-  
+
   printf("Client disconnected\n");
-  return OK;
+  return geterrcode();
 }
 
 int parseurl(

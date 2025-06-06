@@ -19,7 +19,7 @@ extern user users[];
 
 void init_users();
 
-user *login(char *username, char *passwd);
+user *login(char *username, size_t namelen, char *passwd, size_t passlen);
 
 user *getbyid(int id);
 

@@ -18,7 +18,6 @@ static method getmethod(char *methodName, size_t len) {
 
 static int reqinit(request *req) {
   int error;
-
   if (!req) {
     return RAISE_ARGERR("cannot initialize null request");
   }

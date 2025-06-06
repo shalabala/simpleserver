@@ -43,7 +43,10 @@ sb *sbcreate(size_t initial_capacity) {
 }
 
 int sbappend(sb *str, const char *data, size_t len) {
-  if (!str || !data || len == 0) {
+  if(len == 0){
+    return OK;
+  }
+  if (!str || !data || !str->data || !str->capacity || len == 0) {
     return RAISE_ARGERR("null string buffer or data cannot be appended");
   }
 

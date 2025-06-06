@@ -83,7 +83,11 @@ static matchscore matchcalc(centry *entry, char *resbase, size_t resbaselen) {
       return no_match;
     }
   }
-  return m;
+  if(path_i == pathlen && res_i == resbaselen){
+    return m;
+  }else{
+    return no_match;
+  }
 }
 
 static int matchcomp(matchscore a, matchscore b) {
@@ -288,12 +292,11 @@ static centry *getmatch(centry *entries,
   return NULL;
 }
 
-static size_t get_resbaselen(char* resbase, size_t maxlen ){
-  for(size_t i = 0; i < maxlen; ++i){
-    if(resbase[i] == 0 || resbase[i] == '?'){
+static size_t get_resbaselen(char *resbase, size_t maxlen) {
+  for (size_t i = 0; i < maxlen; ++i) {
+    if (resbase[i] == 0 || resbase[i] == '?') {
       return i;
     }
-    ++i;
   }
   return maxlen;
 }
@@ -310,11 +313,11 @@ centry *cmap_match(cmap *map, char *res, size_t reslen) {
     return NULL;
   }
   char *resbase = res + 1;
-  //we are only interested in the part after the first / and before the ?
-  size_t resbaselen =get_resbaselen(resbase, reslen - 1) ;
+  // we are only interested in the part after the first / and before the ?
+  size_t resbaselen = get_resbaselen(resbase, reslen - 1);
   // get the index where the entries that could match are
   size_t startindex, endindex;
-  if (!resbaselen ) {
+  if (!resbaselen) {
     // this are the paths that match "/?.."
     if ((error = get_start_and_end(map, 0, &startindex, &endindex))) {
       return NULL;
@@ -336,7 +339,8 @@ centry *cmap_match(cmap *map, char *res, size_t reslen) {
   // one of the paths at index[0] could match it - this is where a matcher like
   // "/*" or "/{var}" would be inserted at
   size_t sepcount = strncount(resbase, '/', resbaselen);
-  // only check if there is at most one separator, and if its there its the last char
+  // only check if there is at most one separator, and if its there its the last
+  // char
   if (sepcount == 0 || (sepcount == 1 && resbase[resbaselen - 1] == '/')) {
     if ((error = get_start_and_end(map, 0, &startindex, &endindex))) {
       return NULL;

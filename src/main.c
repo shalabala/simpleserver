@@ -10,10 +10,12 @@
 #include "../types/cmap.h"
 #include "../controller/controller.h"
 #include "../configuration/const.h"
+#include "../dal/dal.h"
 
 int main(int argc, char *argv[]) {
   cmap controllers;
   cmap_init(&controllers, 64);
+  init_users();
   reg_controllers(&controllers);
   
   int outgoing_socket, incoming_socket;

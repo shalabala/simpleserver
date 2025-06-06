@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Welcome</title>
+  <style>
+    body { font-family: sans-serif; background: #f9f9f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); text-align: center; }
+    h1 { margin-bottom: 20px; }
+    a { display: block; margin: 10px 0; padding: 10px; background: #007BFF; color: white; text-decoration: none; border-radius: 5px; }
+    a:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome {{username}}!</h1>
+    {{if admin}}
+    <a href="/users?user={{userid}}">List Users</a>
+    {{endif}}
+    <a href="/profile/{{userid}}">See Profile</a>
+  </div>
+</body>
+</html>

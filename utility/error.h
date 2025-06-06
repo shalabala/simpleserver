@@ -10,6 +10,11 @@
 #define NO_OF_ERRORLEVELS 4
 #define NO_OF_ERRORS 100
 
+#define check_for_errors()                                                     \
+  if (geterrcode()) {                                                          \
+    return geterrcode();                                                       \
+  }
+
 typedef enum _severity { WARNING, ERROR, CRITICAL, FATAL } severity;
 
 typedef void (*handler)();
@@ -77,7 +82,7 @@ int raise(char *c, error *e, ...);
 bool haserr();
 
 /**
- * Retrieves the current error code.
+ * Retrieves the current error code or 0.
  */
 int geterrcode();
 
@@ -97,6 +102,9 @@ void reg_err_kind_handler(errcode code, handler handler);
  */
 void fatal_error_handler();
 
+/**
+ * Cleares the global error;
+ */
 void cleargloberr();
 
 #define RAISE_MALLOC(msg, ...) (raise(msg, &malloc_err, ##__VA_ARGS__))
@@ -112,8 +120,11 @@ void cleargloberr();
 #define RAISE_INVALIDCPATH(msg, ...) (raise(msg, &invalid_cpath, ##__VA_ARGS__))
 #define RAISE_INVALIDTEMPLATE(msg, ...)                                        \
   (raise(msg, &invalid_template, ##__VA_ARGS__))
-#define RAISE_ITEM_NOTFOUND(msg, ...) (raise(msg, &item_notfound, ##__VA_ARGS__))
-#define RAISE_INVALID_CTRLCONF(msg, ...) (raise(msg, &invalid_ctrl_config, ##__VA_ARGS__))
-#define RAISE_FILE_NOTFOUND(msg, ...) (raise(msg, &file_notfound, ##__VA_ARGS__))
+#define RAISE_ITEM_NOTFOUND(msg, ...)                                          \
+  (raise(msg, &item_notfound, ##__VA_ARGS__))
+#define RAISE_INVALID_CTRLCONF(msg, ...)                                       \
+  (raise(msg, &invalid_ctrl_config, ##__VA_ARGS__))
+#define RAISE_FILE_NOTFOUND(msg, ...)                                          \
+  (raise(msg, &file_notfound, ##__VA_ARGS__))
 #define OK 0
 #endif // ERROR_H

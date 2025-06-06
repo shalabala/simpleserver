@@ -34,12 +34,11 @@
 void do_assert(bool expr, char *repr) {
   if (!expr) {
     if (haserr()) {
-      error *err = geterr();
       fprintf(stderr,
               "[FAILED] Error has occured whilst evaluating expression [%s]: "
               "%s\n",
               repr,
-              err->description);
+              globerr->description);
     } else {
       fprintf(stderr, "[FAILED] Expression [%s] evaluated to false\n", repr);
     }
@@ -125,7 +124,7 @@ void test_smap() {
   check_null(node = smap_get(&map, key, strlen(key)));
 
   check_fail(smap_del(&map, EXP_LEN("KEYNOTFOUND")));
-  check(geterr()->code == ITEM_NOTFOUND);
+  check(geterrcode() == ITEM_NOTFOUND);
 
   // test empty key
   check_fail(smap_upsert(&map, "", 0, value, strlen(value)));

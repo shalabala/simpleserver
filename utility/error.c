@@ -20,7 +20,6 @@ handler lvl_handler[NO_OF_ERRORLEVELS] = {0};
 handler error_handler[NO_OF_ERRORS] = {0};
 
 int raise(char *c, error *e, ...) {
-
   va_list args;
   va_start(args, e);
 

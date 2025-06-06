@@ -61,9 +61,4 @@ void sbfree(sb *str);
  * @return 0 on success, error code otherwise
  */
 int sbclear(sb *str);
-
-/**
- * Loads the contents of a text file.
- */
-int sb_from_file(sb *str, const char *fname);
 #endif // SB_H

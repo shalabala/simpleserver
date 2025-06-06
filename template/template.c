@@ -496,6 +496,9 @@ handle_if(sb *dest, char *src, size_t slen, smap *context, sb *varnamebuff) {
 }
 
 int render_template(sb *dest, char *src, size_t len, smap *context) {
+  if(geterrcode()){
+    return geterrcode();
+  }
   if (!dest || !src || !context) {
     return RAISE_ARGERR("invalid arguments for render_template");
   }

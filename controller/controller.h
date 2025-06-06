@@ -5,6 +5,7 @@
 #include "../types/cmap.h"
 #include "../types/sb.h"
 #include "../types/smap.h"
+#include "../utility/error.h"
 #include "../utility/functions.h"
 
 /**
@@ -48,15 +49,9 @@ int ctrl_login(request *request,
                response *response,
                smap *context);
 
-inline int reg_controllers(cmap *controllers) {
-  if (cmap_reg(controllers, "/", ctrl_index) ||
-      cmap_reg(controllers, "/welcome/{id}", ctrl_welcome) ||
-      cmap_reg(controllers, "/users", ctrl_list_users) ||
-      cmap_reg(controllers, "/login", ctrl_login) ||
-      cmap_reg(controllers, "**", ctrl_not_found)) {
-    return RAISE_INVALID_CTRLCONF("Invalid controller configuration");
-  }
-  return 0;
-}
+/**
+ * Performs controller registration.
+ */
+int reg_controllers(cmap *controllers);
 
 #endif

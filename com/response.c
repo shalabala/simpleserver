@@ -15,30 +15,22 @@
 #define BUFFLEN 64
 #define BUFFLEN_BIG 1024
 
-int respinit(response *resp, uint16_t respcode, char *respname) {
-  int error;
+int respinit(response *resp) {
+  if (geterrcode()) {
+    return geterrcode();
+  }
   if (!resp) {
     return RAISE_ARGERR("cannot initialize null response");
   }
   sbinit(&resp->body, 512);
   smap_init(&resp->header, 64);
-  resp->respcode.code = respcode;
-  size_t name_size = strlen(respname);
-  resp->respcode.name = malloc(name_size + 1);
 
-  if (!resp->respcode.name) {
-    return RAISE_MALLOC(
-        "Could not allocate %lu +1 byte space for response name", name_size);
-  }
-
-  strncpy(resp->respcode.name, respname, name_size);
-  resp->respcode.namelen = name_size;
   return geterrcode();
 }
 
 static int append_header(sb *respbuilder, smap *header) {
   for (size_t i = 0; i < header->bucketsnum; ++i) {
-    snode *current = header->bucketsnum + i;
+    snode *current = header->buckets + i;
     while (current && current->key) {
       sbappend(respbuilder, current->key, current->keylen);
       sbappend(respbuilder, ": ", 2);
@@ -47,25 +39,32 @@ static int append_header(sb *respbuilder, smap *header) {
       current = current->next;
     }
   }
+  return geterrcode();
+}
+
+static int resp_render(sb *respbuilder, response *resp) {
+  char buffer[BUFFLEN] = {0};
+
+  sbappend(respbuilder, EXP_LEN("HTTP/1.1 "));
+
+  snprintf(buffer, BUFFLEN, "%hu", resp->respcode.code);
+  buffer[BUFFLEN - 1] = 0;
+  sbappend(respbuilder, buffer, strlen(buffer));
+
+  sbappend(respbuilder, " ", 1);
+  sbappend(respbuilder, resp->respcode.name, resp->respcode.namelen);
+  sbappend(respbuilder, "\r\n", 2);
+  append_header(respbuilder, &resp->header);
+  sbappend(respbuilder, "\r\n", 2);
+  sbappend(respbuilder, resp->body.data, resp->body.size);
+  return geterrcode();
 }
 
 int respsend(response *resp, int socket) {
   sb respbuilder = {0};
-  char buffer[BUFFLEN] = {0};
 
   sbinit(&respbuilder, 512);
-  sbappend(&respbuilder, EXP_LEN("HTTP/1.1 "));
-
-  snprintf(buffer, BUFFLEN, "%hu", resp->respcode.code);
-  buffer[BUFFLEN - 1] = 0;
-  sbappend(&respbuilder, buffer, strlen(buffer));
-
-  sbappend(&respbuilder, " ", 1);
-  sbappend(&respbuilder, resp->respcode.name, resp->respcode.namelen);
-  sbappend(&respbuilder, "\r\n", 2);
-  append_header(&respbuilder, &resp->header);
-  sbappend(&respbuilder, "\r\n", 2);
-  sbappend(&respbuilder, &resp->body.data, resp->body.size);
+  resp_render(&respbuilder, resp);
 
   send(socket, respbuilder.data, respbuilder.size, 0);
 
@@ -84,7 +83,7 @@ static int sb_from_file(sb *str, const char *fname) {
   while (fgets(buff, BUFFLEN_BIG, f)) {
     size_t len = strlen(buff);
     if (buff[len - 1] == '\n' && (len == 1 || buff[len - 2] != '\r')) {
-      sbappend(str, buff, len - 2);
+      sbappend(str, buff, len - 1);
       sbappend(str, EXP_LEN("\r\n"));
     } else {
       sbappend(str, buff, len);
@@ -99,6 +98,7 @@ static int get_full_filename(sb *fnamebuff, char *file) {
     sbappend(fnamebuff, EXP_LEN("/"));
   }
   sbappend(fnamebuff, file, strlen(file));
+  return geterrcode();
 }
 
 int create_html(response *resp, char *file, smap *context) {
@@ -136,7 +136,6 @@ void respfree(response *resp) {
   if (resp) {
     sbfree(&resp->body);
     smap_free(&resp->header);
-    free(resp->respcode.name);
   }
 }
 
@@ -146,10 +145,33 @@ int redirect(response *resp, char *whereto) {
   smap_upsert(&resp->header, EXP_LEN("Content-Length"), "0", 1);
   return geterrcode();
 }
-int set_resp_code(response *resp, char *name, uint16_t code) {
+
+void set_resp_code(response *resp, char *name, uint16_t code) {
   resp->respcode.code = code;
   size_t len = MIN(15, strlen(name));
   strncpy(resp->respcode.name, name, len);
-  resp->respcode.name[len]=0;
+  resp->respcode.name[len] = 0;
   resp->respcode.namelen = len;
+}
+
+int respclear(response *resp) {
+  smap_clear(&resp->header);
+  sbclear(&resp->body);
+  resp->respcode.code = 0;
+  resp->respcode.namelen = 0;
+  memset(resp->respcode.name, 0, RESP_CODE_NAME_LEN);
+  return geterrcode();
+}
+
+int respprint(response *resp){
+  sb respbuilder = {0};
+
+  sbinit(&respbuilder, 512);
+  resp_render(&respbuilder, resp);
+  printf("------RESP----------\n");
+  printf("%s\n", respbuilder.data);
+  printf("--------------------\n");
+
+  sbfree(&respbuilder);
+  return OK;
 }
