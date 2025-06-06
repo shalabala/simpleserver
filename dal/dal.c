@@ -64,5 +64,8 @@ user *login(char *username, size_t namelen, char *passwd, size_t passlen) {
 }
 
 user *getbyid(int id){
+  if(id>0 && id<NO_OF_USERS){
     return users + id;
+  }
+  return NULL;
 }

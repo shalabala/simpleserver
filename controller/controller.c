@@ -48,7 +48,7 @@ int ctrl_welcome(request *request,
   if (streq(user->role, user->rolelen, EXP_LEN("admin"))) {
     smap_upsert(context, EXP_LEN("admin"), EXP_LEN("true"));
   } else {
-    smap_upsert(context, EXP_LEN("admin"), EXP_LEN("true"));
+    smap_upsert(context, EXP_LEN("admin"), EXP_LEN("false"));
   }
   create_html(response, "welcome.html", context);
   set_resp_code(response, "OK", 200);
@@ -100,6 +100,31 @@ int ctrl_list_users(request *request,
   return geterrcode();
 }
 
+int ctrl_profile(request *request,
+                 smap *urlargs,
+                 response *response,
+                 smap *context) {
+  // get user id
+  snode *userid = smap_get(urlargs, EXP_LEN("id"));
+  if (!userid) {
+    return notfound(response, context);
+  }
+  user *user = getbyid(atoi(userid->value));
+  if (!user) {
+    return notfound(response, context);
+  }
+  smap_upsert(context, EXP_LEN("username"), user->username, user->namelen);
+  smap_upsert(context, EXP_LEN("role"), user->role, user->rolelen);
+  if (streq(user->role, user->rolelen, EXP_LEN("admin"))) {
+    smap_upsert(context, EXP_LEN("admin"), EXP_LEN("true"));
+  } else {
+    smap_upsert(context, EXP_LEN("admin"), EXP_LEN("false"));
+  }
+  create_html(response, "profile.html", context);
+  set_resp_code(response, "OK", 200);
+  return geterrcode();
+}
+
 int ctrl_login(request *request,
                smap *urlargs,
                response *response,
@@ -127,6 +152,7 @@ int reg_controllers(cmap *controllers) {
       cmap_reg(controllers, "/welcome/{id}", ctrl_welcome) ||
       cmap_reg(controllers, "/users", ctrl_list_users) ||
       cmap_reg(controllers, "/login", ctrl_login) ||
+      cmap_reg(controllers, "/profile/{id}", ctrl_profile) ||
       cmap_reg(controllers, "**", ctrl_not_found)) {
     return RAISE_INVALID_CTRLCONF("Invalid controller configuration");
   }
