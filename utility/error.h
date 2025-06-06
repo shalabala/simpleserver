@@ -73,7 +73,7 @@ extern handler error_handler[NO_OF_ERRORS];
  * @param e Pointer to the error structure.
  * @param ... Additional arguments to format the error message.
  */
-int raise(char *c, error *e, ...);
+int raise_err(char *c, error *e, ...);
 
 /**
  * Checks if there is an error currently stored in the global error variable.
@@ -107,24 +107,26 @@ void fatal_error_handler();
  */
 void cleargloberr();
 
-#define RAISE_MALLOC(msg, ...) (raise(msg, &malloc_err, ##__VA_ARGS__))
-#define RAISE_ARGERR(msg, ...) (raise(msg, &arg_err, ##__VA_ARGS__))
-#define RAISE_RECVFAIL(msg, ...) (raise(msg, &receive_failed, ##__VA_ARGS__))
+#define RAISE_MALLOC(msg, ...) (raise_err(msg, &malloc_err, ##__VA_ARGS__))
+#define RAISE_ARGERR(msg, ...) (raise_err(msg, &arg_err, ##__VA_ARGS__))
+#define RAISE_RECVFAIL(msg, ...)                                               \
+  (raise_err(msg, &receive_failed, ##__VA_ARGS__))
 #define RAISE_BUFFLIMIT(msg, ...)                                              \
-  (raise(msg, &bufflimit_reached, ##__VA_ARGS__))
+  (raise_err(msg, &bufflimit_reached, ##__VA_ARGS__))
 #define RAISE_UNSPMETH(msg, ...)                                               \
-  (raise(msg, &unsupported_method, ##__VA_ARGS__))
+  (raise_err(msg, &unsupported_method, ##__VA_ARGS__))
 #define RAISE_MALFORMEDREQ(msg, ...)                                           \
-  (raise(msg, &receive_failed, ##__VA_ARGS__))
-#define RAISE_CMAPFULL(msg, ...) (raise(msg, &cmap_full, ##__VA_ARGS__))
-#define RAISE_INVALIDCPATH(msg, ...) (raise(msg, &invalid_cpath, ##__VA_ARGS__))
+  (raise_err(msg, &receive_failed, ##__VA_ARGS__))
+#define RAISE_CMAPFULL(msg, ...) (raise_err(msg, &cmap_full, ##__VA_ARGS__))
+#define RAISE_INVALIDCPATH(msg, ...)                                           \
+  (raise_err(msg, &invalid_cpath, ##__VA_ARGS__))
 #define RAISE_INVALIDTEMPLATE(msg, ...)                                        \
-  (raise(msg, &invalid_template, ##__VA_ARGS__))
+  (raise_err(msg, &invalid_template, ##__VA_ARGS__))
 #define RAISE_ITEM_NOTFOUND(msg, ...)                                          \
-  (raise(msg, &item_notfound, ##__VA_ARGS__))
+  (raise_err(msg, &item_notfound, ##__VA_ARGS__))
 #define RAISE_INVALID_CTRLCONF(msg, ...)                                       \
-  (raise(msg, &invalid_ctrl_config, ##__VA_ARGS__))
+  (raise_err(msg, &invalid_ctrl_config, ##__VA_ARGS__))
 #define RAISE_FILE_NOTFOUND(msg, ...)                                          \
-  (raise(msg, &file_notfound, ##__VA_ARGS__))
+  (raise_err(msg, &file_notfound, ##__VA_ARGS__))
 #define OK 0
 #endif // ERROR_H

@@ -5,4 +5,4 @@
 - finish request handling orchestration✅
 - add dummy data source: csv with int index✅
 - optional: add threading
-- document
+- document✅

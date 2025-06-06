@@ -106,6 +106,7 @@ int acceptreq(int incoming_socket,
   respsend(&response, incoming_socket);
 
   reqfree(&req);
+  respfree(&response);
   sbfree(&reqbuff);
   smap_free(&context);
   smap_free(&urlargs);

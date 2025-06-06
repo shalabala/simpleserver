@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "../com/coordination.h"
 #include "../types/cmap.h"
@@ -12,13 +13,30 @@
 #include "../configuration/const.h"
 #include "../dal/dal.h"
 
+int outgoing_socket;
+cmap controllers;
+
+void destruct(){
+  free_users();
+  close(outgoing_socket);
+  cmap_free(&controllers);
+  printf("Program shut down gracefully\n");
+}
+
+void handle_sigint(int sig){
+  printf("Caught signal %d\n", sig);
+  exit(0);
+}
+
 int main(int argc, char *argv[]) {
-  cmap controllers;
+  atexit(destruct);
+  signal(SIGINT, handle_sigint);
+
   cmap_init(&controllers, 64);
   init_users();
   reg_controllers(&controllers);
   
-  int outgoing_socket, incoming_socket;
+  int incoming_socket;
   struct sockaddr_in server_address, client_address;
   socklen_t client_address_length = sizeof(client_address);
   int yes = 1;
@@ -61,6 +79,5 @@ int main(int argc, char *argv[]) {
     
     close(incoming_socket);
   }
-  cmap_free(&controllers);
   return 0;
 }

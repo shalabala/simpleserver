@@ -69,3 +69,17 @@ user *getbyid(int id){
   }
   return NULL;
 }
+
+void free_users(){
+  for(int i = 0; i<NO_OF_USERS; ++i){
+    if(users[i].username){
+      free(users[i].username);
+    }
+    if(users[i].password){
+      free(users[i].password);
+    }
+    if(users[i].role){
+      free(users[i].role);
+    }
+  }
+}
